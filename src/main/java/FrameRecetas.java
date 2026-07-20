@@ -156,6 +156,11 @@ private List<Object[]> filasPendientes = new ArrayList<>(); // {idMedicamento, n
         });
 
         jButtonRegresarAlMenu.setText("Regresar");
+        jButtonRegresarAlMenu.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonRegresarAlMenuActionPerformed(evt);
+            }
+        });
 
         jLabelStatusReceta.setText("jLabel9");
 
@@ -359,6 +364,12 @@ private List<Object[]> filasPendientes = new ArrayList<>(); // {idMedicamento, n
     jTextFieldFrecuencia.setText("");
     jTextFieldDuracion.setText("");
     }//GEN-LAST:event_jButtonLimpiarRecetaActionPerformed
+
+    private void jButtonRegresarAlMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonRegresarAlMenuActionPerformed
+        // TODO add your handling code here:
+        new Menu().setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButtonRegresarAlMenuActionPerformed
 
     /**
      * @param args the command line arguments

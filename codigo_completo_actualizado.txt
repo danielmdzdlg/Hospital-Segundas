@@ -1,0 +1,3555 @@
+=== ARCHIVO: \src\main\java\com\mycompany\hospitalsegundas\HospitalSegundas.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ */
+
+package com.mycompany.hospitalsegundas;
+
+/**
+ *
+ * @author danim
+ */
+public class HospitalSegundas {
+
+    public static void main(String[] args) {
+        System.out.println("Hello World!");
+    }
+}
+
+
+
+=== ARCHIVO: \src\main\java\ComboItem.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
+/**
+ *
+ * @author danim
+ */
+// Se usa para llenar JComboBox mostrando texto legible (ej. "Luis Hernández")
+// pero conservando el ID real (ej. "PAC-0001") para guardarlo en la base.
+public class ComboItem {
+    private final String id;
+    private final String texto;
+
+    public ComboItem(String id, String texto) {
+        this.id = id;
+        this.texto = texto;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    @Override
+    public String toString() {
+        return texto; // esto es lo que se ve en el combo
+    }
+}
+
+
+
+=== ARCHIVO: \src\main\java\Conexion.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
+/**
+ *
+ * @author danim
+ */
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.Properties;
+
+public class Conexion {
+
+    private static final String HOST = "localhost";
+    private static final String PUERTO = "5432";
+    private static final String BASE_DATOS = "Topicos";
+    private static final String ESQUEMA = "hospital";
+    private static final String USUARIO = "postgres";
+    private static final String PASSWORD = "1234";
+
+    private static final String URL =
+            "jdbc:postgresql://" + HOST + ":" + PUERTO + "/" + BASE_DATOS;
+
+    public static Connection obtenerConexion() throws SQLException {
+        try {
+            Class.forName("org.postgresql.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new SQLException("No se encontró el driver de PostgreSQL. "
+                    + "Revisa que la dependencia esté en el pom.xml.", e);
+        }
+
+        Properties props = new Properties();
+        props.setProperty("user", USUARIO);
+        props.setProperty("password", PASSWORD);
+        // Fuerza el search_path al esquema Hospital en cada conexión,
+        // así no dependemos de que la sesión de PostgreSQL lo recuerde.
+        props.setProperty("currentSchema", ESQUEMA);
+
+        return DriverManager.getConnection(URL, props);
+    }
+}
+
+
+
+=== ARCHIVO: \src\main\java\ConsultaDAO.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
+/**
+ *
+ * @author danim
+ */
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
+
+public class ConsultaDAO {
+
+    // idInternamiento puede ser null (consulta externa, sin internamiento asociado)
+    public static void guardar(String idPaciente, int idMedico, Integer idInternamiento,
+            String diagnostico, String observaciones) throws SQLException {
+
+        String sql = "INSERT INTO consultas "
+                + "(id_paciente, id_medico, id_internamiento, diagnostico, observaciones, fecha_consulta) "
+                + "VALUES (?,?,?,?,?,?)";
+
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, idPaciente);
+            ps.setInt(2, idMedico);
+            if (idInternamiento == null) {
+                ps.setNull(3, java.sql.Types.INTEGER);
+            } else {
+                ps.setInt(3, idInternamiento);
+            }
+            ps.setString(4, diagnostico);
+            ps.setString(5, observaciones);
+            ps.setTimestamp(6, Timestamp.valueOf(java.time.LocalDateTime.now()));
+            ps.executeUpdate();
+        }
+    }
+
+    public static void actualizar(int idConsulta, String diagnostico, String observaciones) throws SQLException {
+        // Solo se permite corregir diagnóstico/observaciones; paciente, médico y fecha no se editan.
+        String sql = "UPDATE consultas SET diagnostico=?, observaciones=? WHERE id_consulta=?";
+
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, diagnostico);
+            ps.setString(2, observaciones);
+            ps.setInt(3, idConsulta);
+            ps.executeUpdate();
+        }
+    }
+
+    public static void eliminar(int idConsulta) throws SQLException {
+        String sql = "DELETE FROM consultas WHERE id_consulta=?";
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, idConsulta);
+            ps.executeUpdate();
+        }
+    }
+
+    public static List<Object[]> listarTodos() throws SQLException {
+        String sql = "SELECT c.id_consulta, "
+                + "p.nombre || ' ' || p.apellido_paterno AS paciente, "
+                + "m.nombre || ' ' || m.apellido_paterno AS medico, "
+                + "c.fecha_consulta, c.diagnostico "
+                + "FROM consultas c "
+                + "JOIN pacientes p ON p.id_paciente = c.id_paciente "
+                + "JOIN medicos m ON m.id_medico = c.id_medico "
+                + "ORDER BY c.id_consulta DESC";
+
+        List<Object[]> lista = new ArrayList<>();
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                lista.add(new Object[]{
+                    rs.getInt("id_consulta"),
+                    rs.getString("paciente"),
+                    rs.getString("medico"),
+                    rs.getTimestamp("fecha_consulta"),
+                    rs.getString("diagnostico")
+                });
+            }
+        }
+        return lista;
+    }
+
+    // Internamientos activos de un paciente (para el combo "Internamiento asociado")
+    public static List<Object[]> listarInternamientosActivos(String idPaciente) throws SQLException {
+        String sql = "SELECT id_internamiento, fecha_entrada FROM internamientos "
+                + "WHERE id_paciente = ? AND estado = 'activo' ORDER BY id_internamiento DESC";
+
+        List<Object[]> lista = new ArrayList<>();
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, idPaciente);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(new Object[]{
+                        rs.getInt("id_internamiento"),
+                        rs.getDate("fecha_entrada")
+                    });
+                }
+            }
+        }
+        return lista;
+    }
+}
+
+
+
+=== ARCHIVO: \src\main\java\FrameConsulta.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
+ */
+
+/**
+ *
+ * @author danim
+ */
+
+import java.util.List;
+
+
+public class FrameConsulta extends javax.swing.JFrame {
+
+    /**
+     * Creates new form FrameConsulta
+     */
+    public FrameConsulta() {
+        initComponents();
+    jDateChooserFechaConsulta.setEnabled(false);
+    cargarComboPacientes();
+    cargarComboMedicos();
+    cargarTablaConsultas();
+    }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        jPanel1 = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        jComboBoxPacienteConsulta = new javax.swing.JComboBox<>();
+        jLabel3 = new javax.swing.JLabel();
+        jComboBoxMedicoConsulta = new javax.swing.JComboBox<>();
+        jLabel4 = new javax.swing.JLabel();
+        jComboBoxInternamientoConsulta = new javax.swing.JComboBox<>();
+        jLabel5 = new javax.swing.JLabel();
+        jTextAreaDiagnostico = new javax.swing.JTextField();
+        jLabel6 = new javax.swing.JLabel();
+        jTextAreaObsConsulta = new javax.swing.JTextField();
+        jLabel7 = new javax.swing.JLabel();
+        jDateChooserFechaConsulta = new com.toedter.calendar.JDateChooser();
+        jLabel8 = new javax.swing.JLabel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jTableConsultas = new javax.swing.JTable();
+        jButtonGuardarConsulta = new javax.swing.JButton();
+        jButtonActualizarConsulta = new javax.swing.JButton();
+        jButtonEliminarConsulta = new javax.swing.JButton();
+        jButtonIrAReceta = new javax.swing.JButton();
+        jButtonRegresarAlMenu = new javax.swing.JButton();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+
+        jLabel1.setText("Registrar Consulta");
+
+        jLabel2.setText("Paciente");
+
+        jComboBoxPacienteConsulta.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jComboBoxPacienteConsulta.addItemListener(new java.awt.event.ItemListener() {
+            public void itemStateChanged(java.awt.event.ItemEvent evt) {
+                jComboBoxPacienteConsultaItemStateChanged(evt);
+            }
+        });
+        jComboBoxPacienteConsulta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jComboBoxPacienteConsultaActionPerformed(evt);
+            }
+        });
+
+        jLabel3.setText("Médico");
+
+        jComboBoxMedicoConsulta.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        jLabel4.setText("Internamiento Asociado");
+
+        jComboBoxInternamientoConsulta.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        jLabel5.setText("Diagnóstico");
+
+        jLabel6.setText("Observaciones");
+
+        jLabel7.setText("Fecha ");
+
+        jLabel8.setText("Consultas Registradas");
+
+        jTableConsultas.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null}
+            },
+            new String [] {
+                "Title 1", "Title 2", "Title 3", "Title 4"
+            }
+        ));
+        jTableConsultas.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jTableConsultasMouseClicked(evt);
+            }
+        });
+        jScrollPane1.setViewportView(jTableConsultas);
+
+        jButtonGuardarConsulta.setBackground(new java.awt.Color(153, 204, 255));
+        jButtonGuardarConsulta.setText("Guardar");
+        jButtonGuardarConsulta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonGuardarConsultaActionPerformed(evt);
+            }
+        });
+
+        jButtonActualizarConsulta.setText("Actualizar");
+        jButtonActualizarConsulta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonActualizarConsultaActionPerformed(evt);
+            }
+        });
+
+        jButtonEliminarConsulta.setBackground(new java.awt.Color(255, 102, 102));
+        jButtonEliminarConsulta.setText("Eliminar");
+        jButtonEliminarConsulta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonEliminarConsultaActionPerformed(evt);
+            }
+        });
+
+        jButtonIrAReceta.setText("Ir a Recetas");
+        jButtonIrAReceta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonIrARecetaActionPerformed(evt);
+            }
+        });
+
+        jButtonRegresarAlMenu.setText("Regresar");
+        jButtonRegresarAlMenu.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonRegresarAlMenuActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(27, 27, 27)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 226, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jTextAreaObsConsulta, javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel1Layout.createSequentialGroup()
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                    .addComponent(jLabel4, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 226, Short.MAX_VALUE)
+                                    .addComponent(jComboBoxInternamientoConsulta, javax.swing.GroupLayout.Alignment.LEADING, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                .addGap(46, 46, 46)
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(jPanel1Layout.createSequentialGroup()
+                                        .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addGap(62, 62, 62))
+                                    .addComponent(jTextAreaDiagnostico)))
+                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel1Layout.createSequentialGroup()
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 169, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jComboBoxPacienteConsulta, 0, 349, Short.MAX_VALUE)
+                                    .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jComboBoxMedicoConsulta, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 448, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 448, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                        .addGap(47, 47, 47))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 231, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jDateChooserFechaConsulta, javax.swing.GroupLayout.PREFERRED_SIZE, 222, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 417, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                    .addComponent(jButtonRegresarAlMenu, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jButtonGuardarConsulta, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 197, Short.MAX_VALUE))
+                                .addGap(18, 18, 18)
+                                .addComponent(jButtonActualizarConsulta, javax.swing.GroupLayout.PREFERRED_SIZE, 197, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(18, 18, 18)
+                                .addComponent(jButtonEliminarConsulta, javax.swing.GroupLayout.PREFERRED_SIZE, 197, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(18, 18, 18)
+                                .addComponent(jButtonIrAReceta, javax.swing.GroupLayout.PREFERRED_SIZE, 197, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addGap(0, 78, Short.MAX_VALUE))))
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(29, 29, 29)
+                .addComponent(jLabel1)
+                .addGap(18, 18, 18)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel2)
+                    .addComponent(jLabel3))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jComboBoxMedicoConsulta, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jComboBoxPacienteConsulta, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel4)
+                    .addComponent(jLabel5))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jComboBoxInternamientoConsulta, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jTextAreaDiagnostico, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jLabel6)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jTextAreaObsConsulta, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jLabel7)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jDateChooserFechaConsulta, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jLabel8)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 245, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jButtonGuardarConsulta)
+                    .addComponent(jButtonActualizarConsulta)
+                    .addComponent(jButtonEliminarConsulta)
+                    .addComponent(jButtonIrAReceta))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jButtonRegresarAlMenu)
+                .addContainerGap(14, Short.MAX_VALUE))
+        );
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+        );
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void jButtonGuardarConsultaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonGuardarConsultaActionPerformed
+        // TODO add your handling code here:
+        ComboItem paciente = (ComboItem) jComboBoxPacienteConsulta.getSelectedItem();
+    ComboItem medico = (ComboItem) jComboBoxMedicoConsulta.getSelectedItem();
+    ComboItem internamiento = (ComboItem) jComboBoxInternamientoConsulta.getSelectedItem();
+
+    if (paciente == null || medico == null || jTextAreaDiagnostico.getText().trim().isEmpty()) {
+        jLabel8.setText("Selecciona paciente, médico y escribe el diagnóstico.");
+        return;
+    }
+
+    try {
+        Integer idInternamiento = (internamiento == null || internamiento.getId() == null)
+                ? null : Integer.parseInt(internamiento.getId());
+
+        ConsultaDAO.guardar(
+                paciente.getId(),
+                Integer.parseInt(medico.getId()),
+                idInternamiento,
+                jTextAreaDiagnostico.getText().trim(),
+                jTextAreaObsConsulta.getText().trim()
+        );
+        jLabel8.setText("Consulta guardada correctamente.");
+        limpiarCamposConsulta();
+        cargarTablaConsultas();
+    } catch (java.sql.SQLException e) {
+        jLabel8.setText("Error al guardar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonGuardarConsultaActionPerformed
+
+    private void jButtonActualizarConsultaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonActualizarConsultaActionPerformed
+        // TODO add your handling code here:
+        if (idConsultaSeleccionada == -1) {
+        jLabel8.setText("Selecciona una consulta de la tabla para actualizar.");
+        return;
+    }
+
+    try {
+        ConsultaDAO.actualizar(idConsultaSeleccionada,
+                jTextAreaDiagnostico.getText().trim(),
+                jTextAreaObsConsulta.getText().trim());
+        jLabel8.setText("Consulta actualizada.");
+        limpiarCamposConsulta();
+        cargarTablaConsultas();
+    } catch (java.sql.SQLException e) {
+        jLabel8.setText("Error al actualizar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonActualizarConsultaActionPerformed
+
+    private void jButtonEliminarConsultaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonEliminarConsultaActionPerformed
+        // TODO add your handling code here:
+        if (idConsultaSeleccionada == -1) {
+        jLabel8.setText("Selecciona una consulta de la tabla para eliminar.");
+        return;
+    }
+
+    try {
+        ConsultaDAO.eliminar(idConsultaSeleccionada);
+        jLabel8.setText("Consulta eliminada.");
+        limpiarCamposConsulta();
+        cargarTablaConsultas();
+    } catch (java.sql.SQLException e) {
+        jLabel8.setText("Error al eliminar (revisa que no tenga una receta asociada): " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonEliminarConsultaActionPerformed
+
+    private void jButtonIrARecetaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonIrARecetaActionPerformed
+        // TODO add your handling code here:
+        if (idConsultaSeleccionada == -1) {
+        jLabel8.setText("Selecciona una consulta de la tabla para emitirle receta.");
+        return;
+    }
+    FrameRecetas frame = new FrameRecetas(idConsultaSeleccionada);
+    frame.setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButtonIrARecetaActionPerformed
+
+    private int idConsultaSeleccionada = -1;
+    private void jTableConsultasMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTableConsultasMouseClicked
+        // TODO add your handling code here:
+        int fila = jTableConsultas.getSelectedRow();
+    if (fila == -1) return;
+
+    idConsultaSeleccionada = (int) jTableConsultas.getValueAt(fila, 0);
+    jTextAreaDiagnostico.setText(jTableConsultas.getValueAt(fila, 4) == null
+            ? "" : jTableConsultas.getValueAt(fila, 4).toString());
+    }//GEN-LAST:event_jTableConsultasMouseClicked
+
+    private void jComboBoxPacienteConsultaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jComboBoxPacienteConsultaActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jComboBoxPacienteConsultaActionPerformed
+
+    private void jButtonRegresarAlMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonRegresarAlMenuActionPerformed
+        // TODO add your handling code here:
+        new Menu().setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButtonRegresarAlMenuActionPerformed
+
+    private void jComboBoxPacienteConsultaItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_jComboBoxPacienteConsultaItemStateChanged
+        // TODO add your handling code here:
+        cargarComboInternamientos();
+                
+    }//GEN-LAST:event_jComboBoxPacienteConsultaItemStateChanged
+
+    
+    
+    
+    
+
+
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         */
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(FrameConsulta.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(FrameConsulta.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(FrameConsulta.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(FrameConsulta.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+        /* Create and display the form */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new FrameConsulta().setVisible(true);
+            }
+        });
+    }
+
+    
+    
+    
+    
+    private void cargarComboPacientes() {
+    try {
+        javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+        for (Object[] fila : PacienteDAO.listarTodos()) {
+            String id = fila[0].toString();
+            String nombre = fila[1] + " " + fila[2];
+            modelo.addElement(new ComboItem(id, id + " — " + nombre));
+        }
+        jComboBoxPacienteConsulta.setModel(modelo);
+        cargarComboInternamientos(); // refresca internamientos del primer paciente
+    } catch (java.sql.SQLException e) {
+        jLabel8.setText("Error al cargar pacientes: " + e.getMessage());
+    }
+}
+
+// ===== Cargar combo de médicos =====
+private void cargarComboMedicos() {
+    try {
+        javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+        for (Object[] fila : MedicoDAO.listarTodos()) {
+            String id = fila[0].toString();
+            String nombre = fila[1] + " " + fila[2];
+            modelo.addElement(new ComboItem(id, nombre));
+        }
+        jComboBoxMedicoConsulta.setModel(modelo);
+    } catch (java.sql.SQLException e) {
+        jLabel8.setText("Error al cargar médicos: " + e.getMessage());
+    }
+}
+
+// ===== Cargar combo de internamientos ACTIVOS del paciente seleccionado =====
+private void cargarComboInternamientos() {
+    ComboItem paciente = (ComboItem) jComboBoxPacienteConsulta.getSelectedItem();
+    javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+    modelo.addElement(new ComboItem(null, "— Ninguno (consulta externa) —"));
+
+    if (paciente != null) {
+        try {
+            for (Object[] fila : ConsultaDAO.listarInternamientosActivos(paciente.getId())) {
+                String id = fila[0].toString();
+                modelo.addElement(new ComboItem(id, "Internamiento #" + id + " (" + fila[1] + ")"));
+            }
+        } catch (java.sql.SQLException e) {
+            jLabel8.setText("Error al cargar internamientos: " + e.getMessage());
+        }
+    }
+    jComboBoxInternamientoConsulta.setModel(modelo);
+}
+
+// ===== Cargar la tabla de consultas =====
+private void cargarTablaConsultas() {
+    try {
+        javax.swing.table.DefaultTableModel modelo =
+                (javax.swing.table.DefaultTableModel) jTableConsultas.getModel();
+        modelo.setRowCount(0);
+        modelo.setColumnIdentifiers(new String[]{
+            "ID", "Paciente", "Médico", "Fecha", "Diagnóstico"
+        });
+
+        for (Object[] fila : ConsultaDAO.listarTodos()) {
+            modelo.addRow(fila);
+        }
+    } catch (java.sql.SQLException e) {
+        jLabel8.setText("Error al cargar consultas: " + e.getMessage());
+    }
+}
+
+// ===== Limpiar campos =====
+private void limpiarCamposConsulta() {
+    jTextAreaDiagnostico.setText("");
+    jTextAreaObsConsulta.setText("");
+    idConsultaSeleccionada = -1;
+    jTableConsultas.clearSelection();
+}
+    
+    
+    
+    
+    
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton jButtonActualizarConsulta;
+    private javax.swing.JButton jButtonEliminarConsulta;
+    private javax.swing.JButton jButtonGuardarConsulta;
+    private javax.swing.JButton jButtonIrAReceta;
+    private javax.swing.JButton jButtonRegresarAlMenu;
+    private javax.swing.JComboBox<String> jComboBoxInternamientoConsulta;
+    private javax.swing.JComboBox<String> jComboBoxMedicoConsulta;
+    private javax.swing.JComboBox<String> jComboBoxPacienteConsulta;
+    private com.toedter.calendar.JDateChooser jDateChooserFechaConsulta;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTable jTableConsultas;
+    private javax.swing.JTextField jTextAreaDiagnostico;
+    private javax.swing.JTextField jTextAreaObsConsulta;
+    // End of variables declaration//GEN-END:variables
+}
+
+
+
+=== ARCHIVO: \src\main\java\FrameInternamiento.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
+ */
+
+/**
+ *
+ * @author danim
+ */
+
+import java.util.List;
+
+
+public class FrameInternamiento extends javax.swing.JFrame {
+
+    /**
+     * Creates new form FrameInternamiento
+     */
+    
+    
+    private int idInternamientoSeleccionado = -1;
+    
+    public FrameInternamiento() {
+        initComponents();
+        jDateChooserEntrada.setEnabled(false);
+    jDateChooserSalida.setEnabled(false);
+        cargarComboPacientes();
+        cargarComboMedicos();
+        cargarTablaInternamientos();
+    }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        jComboBoxTipoPaciente = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        jLabel3 = new javax.swing.JLabel();
+        jLabel4 = new javax.swing.JLabel();
+        jLabel5 = new javax.swing.JLabel();
+        jComboBoxPacienteInt = new javax.swing.JComboBox<>();
+        jComboBoxMedicoResponsable = new javax.swing.JComboBox<>();
+        jComboBox3 = new javax.swing.JComboBox<>();
+        jDateChooserEntrada = new com.toedter.calendar.JDateChooser();
+        jLabel6 = new javax.swing.JLabel();
+        jTextFieldMotivoEntrada = new javax.swing.JTextField();
+        jLabel7 = new javax.swing.JLabel();
+        jTextAreaObsEntrada = new javax.swing.JTextField();
+        jLabel8 = new javax.swing.JLabel();
+        jLabel10 = new javax.swing.JLabel();
+        jDateChooserSalida = new com.toedter.calendar.JDateChooser();
+        jLabel11 = new javax.swing.JLabel();
+        jComboBoxMotivoSalida = new javax.swing.JComboBox<>();
+        jLabel12 = new javax.swing.JLabel();
+        jTextAreaObsSalida = new javax.swing.JTextField();
+        jLabel13 = new javax.swing.JLabel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jTableInternamientos = new javax.swing.JTable();
+        jButtonRegistrarEntrada = new javax.swing.JButton();
+        jButtonRegistrarSalida = new javax.swing.JButton();
+        jButtonLimpiarInternamiento = new javax.swing.JButton();
+        jButtonRegresaralMenu = new javax.swing.JButton();
+        jButtonActualizarInternamiento = new javax.swing.JButton();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+
+        jLabel1.setText("Registrar Internamiento (Entrada)");
+
+        jLabel2.setText("Paciente");
+
+        jLabel3.setText("Médico Responsable");
+
+        jLabel4.setText("Tipo de Paciente");
+
+        jLabel5.setText("Fecha de Entrada");
+
+        jComboBoxPacienteInt.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        jComboBoxMedicoResponsable.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        jComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Hospitalizado", "Urgencias", "Ambulatorio" }));
+
+        jLabel6.setText("Motivo de entrada");
+
+        jTextFieldMotivoEntrada.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jTextFieldMotivoEntradaActionPerformed(evt);
+            }
+        });
+
+        jLabel7.setText("Observaciones");
+
+        jLabel8.setText("Registrar Salida");
+
+        jLabel10.setText("Fecha de salida");
+
+        jLabel11.setText("Motivo de Salida");
+
+        jComboBoxMotivoSalida.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Alta médica", "Traslado", "Voluntaria", "Defuncion" }));
+
+        jLabel12.setText("Observaciones");
+
+        jLabel13.setText("Internador");
+
+        jTableInternamientos.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null}
+            },
+            new String [] {
+                "Title 1", "Title 2", "Title 3", "Title 4"
+            }
+        ));
+        jTableInternamientos.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jTableInternamientosMouseClicked(evt);
+            }
+        });
+        jScrollPane1.setViewportView(jTableInternamientos);
+
+        jButtonRegistrarEntrada.setBackground(new java.awt.Color(153, 204, 255));
+        jButtonRegistrarEntrada.setText("Registrar Entrada");
+        jButtonRegistrarEntrada.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonRegistrarEntradaActionPerformed(evt);
+            }
+        });
+
+        jButtonRegistrarSalida.setBackground(new java.awt.Color(153, 204, 255));
+        jButtonRegistrarSalida.setText("Registrar Salida");
+        jButtonRegistrarSalida.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonRegistrarSalidaActionPerformed(evt);
+            }
+        });
+
+        jButtonLimpiarInternamiento.setText("Limpiar");
+        jButtonLimpiarInternamiento.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonLimpiarInternamientoActionPerformed(evt);
+            }
+        });
+
+        jButtonRegresaralMenu.setText("Regresar");
+        jButtonRegresaralMenu.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonRegresaralMenuActionPerformed(evt);
+            }
+        });
+
+        jButtonActualizarInternamiento.setText("Actualizar");
+        jButtonActualizarInternamiento.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonActualizarInternamientoActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jComboBoxTipoPacienteLayout = new javax.swing.GroupLayout(jComboBoxTipoPaciente);
+        jComboBoxTipoPaciente.setLayout(jComboBoxTipoPacienteLayout);
+        jComboBoxTipoPacienteLayout.setHorizontalGroup(
+            jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jComboBoxTipoPacienteLayout.createSequentialGroup()
+                .addGap(32, 32, 32)
+                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jComboBoxTipoPacienteLayout.createSequentialGroup()
+                        .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jComboBoxTipoPacienteLayout.createSequentialGroup()
+                                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(jLabel8, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jTextFieldMotivoEntrada, javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jLabel6, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jComboBoxPacienteInt, javax.swing.GroupLayout.Alignment.LEADING, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                .addGap(18, 18, 18))
+                            .addGroup(jComboBoxTipoPacienteLayout.createSequentialGroup()
+                                .addGap(6, 6, 6)
+                                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jDateChooserSalida, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(42, 42, 42)
+                                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, 161, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jComboBoxMotivoSalida, javax.swing.GroupLayout.PREFERRED_SIZE, 264, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                        .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jTextAreaObsEntrada)
+                            .addGroup(jComboBoxTipoPacienteLayout.createSequentialGroup()
+                                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jComboBoxMedicoResponsable, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jLabel4, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jComboBox3, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, 162, Short.MAX_VALUE)
+                                    .addComponent(jDateChooserEntrada, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                        .addGap(103, 103, 103))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jComboBoxTipoPacienteLayout.createSequentialGroup()
+                        .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jComboBoxTipoPacienteLayout.createSequentialGroup()
+                                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 246, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(0, 0, Short.MAX_VALUE))
+                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jComboBoxTipoPacienteLayout.createSequentialGroup()
+                                .addComponent(jLabel12, javax.swing.GroupLayout.PREFERRED_SIZE, 107, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(18, 18, 18)
+                                .addComponent(jTextAreaObsSalida)))
+                        .addGap(109, 109, 109))
+                    .addGroup(jComboBoxTipoPacienteLayout.createSequentialGroup()
+                        .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, 227, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(jComboBoxTipoPacienteLayout.createSequentialGroup()
+                                .addComponent(jButtonRegistrarEntrada, javax.swing.GroupLayout.PREFERRED_SIZE, 139, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(18, 18, 18)
+                                .addComponent(jButtonRegistrarSalida, javax.swing.GroupLayout.PREFERRED_SIZE, 139, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(18, 18, 18)
+                                .addComponent(jButtonLimpiarInternamiento, javax.swing.GroupLayout.PREFERRED_SIZE, 139, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(18, 18, 18)
+                                .addComponent(jButtonActualizarInternamiento, javax.swing.GroupLayout.PREFERRED_SIZE, 139, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(18, 18, 18)
+                                .addComponent(jButtonRegresaralMenu, javax.swing.GroupLayout.PREFERRED_SIZE, 139, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addContainerGap(338, Short.MAX_VALUE))))
+        );
+        jComboBoxTipoPacienteLayout.setVerticalGroup(
+            jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jComboBoxTipoPacienteLayout.createSequentialGroup()
+                .addGap(28, 28, 28)
+                .addComponent(jLabel1)
+                .addGap(18, 18, 18)
+                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel2)
+                    .addComponent(jLabel3)
+                    .addComponent(jLabel4)
+                    .addComponent(jLabel5))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(jComboBoxPacienteInt, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jComboBoxMedicoResponsable, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jComboBox3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jDateChooserEntrada, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel6)
+                    .addComponent(jLabel7))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jTextFieldMotivoEntrada, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jTextAreaObsEntrada, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addComponent(jLabel8)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel10)
+                    .addComponent(jLabel11))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jDateChooserSalida, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jComboBoxMotivoSalida, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel12)
+                    .addComponent(jTextAreaObsSalida, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(31, 31, 31)
+                .addComponent(jLabel13)
+                .addGap(18, 18, 18)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 165, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jButtonRegistrarEntrada)
+                    .addComponent(jButtonRegistrarSalida)
+                    .addComponent(jButtonLimpiarInternamiento)
+                    .addComponent(jButtonActualizarInternamiento)
+                    .addComponent(jButtonRegresaralMenu))
+                .addContainerGap(93, Short.MAX_VALUE))
+        );
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jComboBoxTipoPaciente, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(jComboBoxTipoPaciente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, Short.MAX_VALUE))
+        );
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void jTextFieldMotivoEntradaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldMotivoEntradaActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jTextFieldMotivoEntradaActionPerformed
+
+    private void jButtonRegistrarEntradaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonRegistrarEntradaActionPerformed
+        // TODO add your handling code here:
+        ComboItem paciente = (ComboItem) jComboBoxPacienteInt.getSelectedItem();
+    ComboItem medico = (ComboItem) jComboBoxMedicoResponsable.getSelectedItem();
+
+    if (paciente == null || medico == null || jTextFieldMotivoEntrada.getText().trim().isEmpty()) {
+        jLabel13.setText("Selecciona paciente, médico y escribe el motivo de entrada.");
+        return;
+    }
+
+    try {
+        InternamientoDAO.registrarEntrada(
+                paciente.getId(),
+                Integer.parseInt(medico.getId()),
+                jComboBox3.getSelectedItem().toString(), // tipo de paciente
+                jTextFieldMotivoEntrada.getText().trim(),
+                jTextAreaObsEntrada.getText().trim()
+        );
+        jLabel13.setText("Entrada registrada a las "
+                + java.time.LocalTime.now().withNano(0) + ".");
+        jTextFieldMotivoEntrada.setText("");
+        jTextAreaObsEntrada.setText("");
+        cargarTablaInternamientos();
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al registrar entrada: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonRegistrarEntradaActionPerformed
+
+    private void jTableInternamientosMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTableInternamientosMouseClicked
+        // TODO add your handling code here:
+        int fila = jTableInternamientos.getSelectedRow();
+    if (fila == -1) return;
+
+    idInternamientoSeleccionado = (int) jTableInternamientos.getValueAt(fila, 0);
+    String estado = jTableInternamientos.getValueAt(fila, 6).toString();
+
+    if (!"activo".equals(estado)) {
+        jLabel13.setText("Este internamiento ya tiene salida registrada.");
+    } else {
+        jLabel13.setText("Internamiento #" + idInternamientoSeleccionado + " listo para registrar salida.");
+    }
+    }//GEN-LAST:event_jTableInternamientosMouseClicked
+
+    private void jButtonRegistrarSalidaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonRegistrarSalidaActionPerformed
+        // TODO add your handling code here:
+        if (idInternamientoSeleccionado == -1) {
+        jLabel13.setText("Selecciona en la tabla el internamiento al que le vas a dar salida.");
+        return;
+    }
+    if (jComboBoxMotivoSalida.getSelectedItem() == null) {
+        jLabel13.setText("Selecciona el motivo de salida.");
+        return;
+    }
+
+    try {
+        InternamientoDAO.registrarSalida(
+                idInternamientoSeleccionado,
+                jComboBoxMotivoSalida.getSelectedItem().toString(),
+                jTextAreaObsSalida.getText().trim()
+        );
+        jLabel13.setText("Salida registrada a las "
+                + java.time.LocalTime.now().withNano(0) + ".");
+        jTextAreaObsSalida.setText("");
+        idInternamientoSeleccionado = -1;
+        cargarTablaInternamientos();
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al registrar salida: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonRegistrarSalidaActionPerformed
+
+    private void jButtonLimpiarInternamientoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonLimpiarInternamientoActionPerformed
+        // TODO add your handling code here:
+        jTextFieldMotivoEntrada.setText("");
+    jTextAreaObsEntrada.setText("");
+    jTextAreaObsSalida.setText("");
+    idInternamientoSeleccionado = -1;
+    jTableInternamientos.clearSelection();
+    }//GEN-LAST:event_jButtonLimpiarInternamientoActionPerformed
+
+    private void jButtonActualizarInternamientoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonActualizarInternamientoActionPerformed
+        // TODO add your handling code here:
+        if (idInternamientoSeleccionado == -1) {
+        jLabel13.setText("Selecciona en la tabla el internamiento a corregir.");
+        return;
+    }
+    if (jTextFieldMotivoEntrada.getText().trim().isEmpty()) {
+        jLabel13.setText("Escribe el motivo de entrada.");
+        return;
+    }
+
+    try {
+        InternamientoDAO.actualizarDatosEntrada(
+                idInternamientoSeleccionado,
+                jTextFieldMotivoEntrada.getText().trim(),
+                jTextAreaObsEntrada.getText().trim()
+        );
+        jLabel13.setText("Datos de entrada actualizados.");
+        cargarTablaInternamientos();
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al actualizar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonActualizarInternamientoActionPerformed
+
+    private void jButtonRegresaralMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonRegresaralMenuActionPerformed
+        // TODO add your handling code here:
+        new Menu().setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButtonRegresaralMenuActionPerformed
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         */
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(FrameInternamiento.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(FrameInternamiento.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(FrameInternamiento.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(FrameInternamiento.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+        /* Create and display the form */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new FrameInternamiento().setVisible(true);
+            }
+        });
+    }
+
+    
+    
+    
+    
+    
+    // ===== Cargar combo de pacientes (solo para el registro de entrada) =====
+private void cargarComboPacientes() {
+    try {
+        javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+        for (Object[] fila : PacienteDAO.listarTodos()) {
+            String id = fila[0].toString();
+            String nombre = fila[1] + " " + fila[2]; // nombre + apellido paterno
+            modelo.addElement(new ComboItem(id, id + " — " + nombre));
+        }
+        jComboBoxPacienteInt.setModel(modelo);
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al cargar pacientes: " + e.getMessage());
+    }
+}
+
+// ===== Cargar combo de médicos =====
+private void cargarComboMedicos() {
+    try {
+        javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+        for (Object[] fila : MedicoDAO.listarTodos()) {
+            String id = fila[0].toString();
+            String nombre = fila[1] + " " + fila[2]; // nombre + apellido paterno
+            modelo.addElement(new ComboItem(id, nombre));
+        }
+        jComboBoxMedicoResponsable.setModel(modelo);
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al cargar médicos: " + e.getMessage());
+    }
+}
+
+// ===== Cargar la tabla de internamientos =====
+private void cargarTablaInternamientos() {
+    try {
+        javax.swing.table.DefaultTableModel modelo =
+                (javax.swing.table.DefaultTableModel) jTableInternamientos.getModel();
+        modelo.setRowCount(0);
+        modelo.setColumnIdentifiers(new String[]{
+            "ID", "Paciente", "F. Entrada", "H. Entrada", "F. Salida", "H. Salida", "Estado"
+        });
+
+        for (Object[] fila : InternamientoDAO.listarTodos()) {
+            modelo.addRow(fila);
+        }
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al cargar internamientos: " + e.getMessage());
+    }
+}
+
+
+
+
+
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton jButtonActualizarInternamiento;
+    private javax.swing.JButton jButtonLimpiarInternamiento;
+    private javax.swing.JButton jButtonRegistrarEntrada;
+    private javax.swing.JButton jButtonRegistrarSalida;
+    private javax.swing.JButton jButtonRegresaralMenu;
+    private javax.swing.JComboBox<String> jComboBox3;
+    private javax.swing.JComboBox<String> jComboBoxMedicoResponsable;
+    private javax.swing.JComboBox<String> jComboBoxMotivoSalida;
+    private javax.swing.JComboBox<String> jComboBoxPacienteInt;
+    private javax.swing.JPanel jComboBoxTipoPaciente;
+    private com.toedter.calendar.JDateChooser jDateChooserEntrada;
+    private com.toedter.calendar.JDateChooser jDateChooserSalida;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel10;
+    private javax.swing.JLabel jLabel11;
+    private javax.swing.JLabel jLabel12;
+    private javax.swing.JLabel jLabel13;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTable jTableInternamientos;
+    private javax.swing.JTextField jTextAreaObsEntrada;
+    private javax.swing.JTextField jTextAreaObsSalida;
+    private javax.swing.JTextField jTextFieldMotivoEntrada;
+    // End of variables declaration//GEN-END:variables
+}
+
+
+
+=== ARCHIVO: \src\main\java\FrameMedicos.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
+ */
+
+/**
+ *
+ * @author danim
+ */
+public class FrameMedicos extends javax.swing.JFrame {
+
+    /**
+     * Creates new form FrameMedicos
+     */
+    public FrameMedicos() {
+        initComponents();
+        cargarTablaMedicos();
+    }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        jPanel1 = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
+        jTextFieldNombreMedico = new javax.swing.JTextField();
+        jLabel2 = new javax.swing.JLabel();
+        jLabel3 = new javax.swing.JLabel();
+        jTextFieldApPaterno = new javax.swing.JTextField();
+        jLabel4 = new javax.swing.JLabel();
+        jLabel5 = new javax.swing.JLabel();
+        jTextFieldApMaterno = new javax.swing.JTextField();
+        jTextFieldCedula = new javax.swing.JTextField();
+        jLabel6 = new javax.swing.JLabel();
+        jLabel7 = new javax.swing.JLabel();
+        jTextFieldHospital = new javax.swing.JTextField();
+        jFormattedTextFieldTelefono = new javax.swing.JTextField();
+        jLabel8 = new javax.swing.JLabel();
+        jLabel9 = new javax.swing.JLabel();
+        jTextField7 = new javax.swing.JTextField();
+        jComboBoxEspecialidad = new javax.swing.JComboBox<>();
+        jLabel10 = new javax.swing.JLabel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jTableMedicos = new javax.swing.JTable();
+        jButton1 = new javax.swing.JButton();
+        jButtonActualizarMedico = new javax.swing.JButton();
+        jButtonEliminarMedico = new javax.swing.JButton();
+        jButtonLimpiarMedico = new javax.swing.JButton();
+        jButtonMenuP = new javax.swing.JButton();
+        jLabel11 = new javax.swing.JLabel();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+
+        jLabel1.setText("Alta / Edición Médicos");
+
+        jLabel2.setText("Nombre(s)");
+
+        jLabel3.setText("Apellido Paterno");
+
+        jLabel4.setText("Apellido Materno");
+
+        jLabel5.setText("Cédula Profesional");
+
+        jLabel6.setText("Especialidad");
+
+        jLabel7.setText("Hospital");
+
+        jLabel8.setText("Teléfono");
+
+        jLabel9.setText("Correo electrónico");
+
+        jComboBoxEspecialidad.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Pediatria", "Internista", "Cardiología", "Cirugia", "Odontología", "Epidemiología", "Urgencias" }));
+
+        jLabel10.setText("Médicos Registrados");
+
+        jTableMedicos.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null}
+            },
+            new String [] {
+                "Title 1", "Title 2", "Title 3", "Title 4"
+            }
+        ));
+        jTableMedicos.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jTableMedicosMouseClicked(evt);
+            }
+        });
+        jScrollPane1.setViewportView(jTableMedicos);
+
+        jButton1.setBackground(new java.awt.Color(153, 204, 255));
+        jButton1.setText("Guardar");
+        jButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton1ActionPerformed(evt);
+            }
+        });
+
+        jButtonActualizarMedico.setText("Actualizar");
+        jButtonActualizarMedico.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonActualizarMedicoActionPerformed(evt);
+            }
+        });
+
+        jButtonEliminarMedico.setBackground(new java.awt.Color(255, 102, 102));
+        jButtonEliminarMedico.setText("Eliminar");
+        jButtonEliminarMedico.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonEliminarMedicoActionPerformed(evt);
+            }
+        });
+
+        jButtonLimpiarMedico.setText("Limpiar");
+        jButtonLimpiarMedico.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonLimpiarMedicoActionPerformed(evt);
+            }
+        });
+
+        jButtonMenuP.setText("Regresar");
+        jButtonMenuP.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonMenuPActionPerformed(evt);
+            }
+        });
+
+        jLabel11.setText("info");
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(34, 34, 34)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 202, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(jPanel1Layout.createSequentialGroup()
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(jTextFieldApMaterno)
+                                .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 152, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jTextFieldNombreMedico)
+                                .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 235, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 169, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jFormattedTextFieldTelefono)
+                                .addComponent(jComboBoxEspecialidad, 0, 388, Short.MAX_VALUE))
+                            .addGap(76, 76, 76)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(jTextFieldHospital)
+                                .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 186, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jTextFieldApPaterno)
+                                .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 189, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jTextFieldCedula)
+                                .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 247, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 168, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jTextField7, javax.swing.GroupLayout.PREFERRED_SIZE, 373, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 376, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jScrollPane1))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButtonActualizarMedico, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButtonEliminarMedico, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButtonLimpiarMedico, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButtonMenuP, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, 565, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(59, Short.MAX_VALUE))
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(26, 26, 26)
+                .addComponent(jLabel1)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel2)
+                    .addComponent(jLabel3))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jTextFieldNombreMedico, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jTextFieldApPaterno, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel5)
+                    .addComponent(jLabel4))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jTextFieldApMaterno, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jTextFieldCedula, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(22, 22, 22)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel6)
+                    .addComponent(jLabel7, javax.swing.GroupLayout.Alignment.TRAILING))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jTextFieldHospital, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jComboBoxEspecialidad, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel8)
+                    .addComponent(jLabel9))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jFormattedTextFieldTelefono, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jTextField7, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addComponent(jLabel10)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 189, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jButton1)
+                    .addComponent(jButtonActualizarMedico)
+                    .addComponent(jButtonEliminarMedico)
+                    .addComponent(jButtonLimpiarMedico)
+                    .addComponent(jButtonMenuP))
+                .addGap(18, 18, 18)
+                .addComponent(jLabel11)
+                .addContainerGap(51, Short.MAX_VALUE))
+        );
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, Short.MAX_VALUE))
+        );
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+        // TODO add your handling code here:
+        if (jTextFieldNombreMedico.getText().trim().isEmpty()
+            || jTextFieldApPaterno.getText().trim().isEmpty()
+            || jTextFieldCedula.getText().trim().isEmpty()) {
+        jLabel11.setText("Nombre, apellido paterno y cédula son obligatorios.");
+        return;
+    }
+
+    try {
+        MedicoDAO.guardar(
+                jTextFieldNombreMedico.getText().trim(),
+                jTextFieldApPaterno.getText().trim(),
+                jTextFieldApMaterno.getText().trim(),
+                jTextFieldCedula.getText().trim(),
+                jComboBoxEspecialidad.getSelectedItem().toString(),
+                jTextFieldHospital.getText().trim(),
+                jFormattedTextFieldTelefono.getText().trim(),
+                jTextField7.getText().trim()
+        );
+        jLabel11.setText("Médico guardado correctamente.");
+        limpiarCamposMedico();
+        cargarTablaMedicos();
+    } catch (java.sql.SQLException e) {
+        jLabel11.setText("Error al guardar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButton1ActionPerformed
+
+    private void jButtonActualizarMedicoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonActualizarMedicoActionPerformed
+        // TODO add your handling code here:
+        int fila = jTableMedicos.getSelectedRow();
+    if (fila == -1) {
+        jLabel11.setText("Selecciona un médico de la tabla para actualizar.");
+        return;
+    }
+    int idMedico = (int) jTableMedicos.getValueAt(fila, 0);
+
+    try {
+        MedicoDAO.actualizar(idMedico,
+                jTextFieldNombreMedico.getText().trim(),
+                jTextFieldApPaterno.getText().trim(),
+                jTextFieldApMaterno.getText().trim(),
+                jTextFieldCedula.getText().trim(),
+                jComboBoxEspecialidad.getSelectedItem().toString(),
+                jTextFieldHospital.getText().trim(),
+                jFormattedTextFieldTelefono.getText().trim(),
+                jTextField7.getText().trim()
+        );
+        jLabel11.setText("Médico actualizado.");
+        limpiarCamposMedico();
+        cargarTablaMedicos();
+    } catch (java.sql.SQLException e) {
+        jLabel11.setText("Error al actualizar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonActualizarMedicoActionPerformed
+
+    private void jButtonEliminarMedicoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonEliminarMedicoActionPerformed
+        // TODO add your handling code here:
+        int fila = jTableMedicos.getSelectedRow();
+    if (fila == -1) {
+        jLabel11.setText("Selecciona un médico de la tabla para eliminar.");
+        return;
+    }
+    int idMedico = (int) jTableMedicos.getValueAt(fila, 0);
+
+    try {
+        MedicoDAO.eliminar(idMedico);
+        jLabel11.setText("Médico eliminado.");
+        limpiarCamposMedico();
+        cargarTablaMedicos();
+    } catch (java.sql.SQLException e) {
+        jLabel11.setText("Error al eliminar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonEliminarMedicoActionPerformed
+
+    private void jButtonLimpiarMedicoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonLimpiarMedicoActionPerformed
+        // TODO add your handling code here:
+        limpiarCamposMedico();
+    }//GEN-LAST:event_jButtonLimpiarMedicoActionPerformed
+
+    private void jButtonMenuPActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonMenuPActionPerformed
+        // TODO add your handling code here:
+        new Menu().setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButtonMenuPActionPerformed
+
+    private void jTableMedicosMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTableMedicosMouseClicked
+        // TODO add your handling code here:
+            int fila = jTableMedicos.getSelectedRow();
+    if (fila == -1) return;
+
+    javax.swing.table.DefaultTableModel modelo =
+            (javax.swing.table.DefaultTableModel) jTableMedicos.getModel();
+
+    jTextFieldNombreMedico.setText(modelo.getValueAt(fila, 1).toString());
+    jTextFieldApPaterno.setText(modelo.getValueAt(fila, 2).toString());
+    jTextFieldApMaterno.setText(modelo.getValueAt(fila, 3) == null ? "" : modelo.getValueAt(fila, 3).toString());
+    jTextFieldCedula.setText(modelo.getValueAt(fila, 4).toString());
+    jComboBoxEspecialidad.setSelectedItem(modelo.getValueAt(fila, 5) == null ? "" : modelo.getValueAt(fila, 5).toString());
+    jTextFieldHospital.setText(modelo.getValueAt(fila, 6) == null ? "" : modelo.getValueAt(fila, 6).toString());
+    jFormattedTextFieldTelefono.setText(modelo.getValueAt(fila, 7) == null ? "" : modelo.getValueAt(fila, 7).toString());
+    jTextField7.setText(modelo.getValueAt(fila, 8) == null ? "" : modelo.getValueAt(fila, 8).toString());
+    }//GEN-LAST:event_jTableMedicosMouseClicked
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         */
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(FrameMedicos.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(FrameMedicos.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(FrameMedicos.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(FrameMedicos.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+        /* Create and display the form */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new FrameMedicos().setVisible(true);
+            }
+        });
+    }
+    
+    
+    
+    // ===== Cargar la tabla de médicos =====
+private void cargarTablaMedicos() {
+    try {
+        javax.swing.table.DefaultTableModel modelo =
+                (javax.swing.table.DefaultTableModel) jTableMedicos.getModel();
+        modelo.setRowCount(0); // limpia filas previas
+        modelo.setColumnIdentifiers(new String[]{
+            "ID", "Nombre", "Ap. Paterno", "Ap. Materno",
+            "Cédula", "Especialidad", "Hospital", "Teléfono", "Correo"
+        });
+
+        for (Object[] fila : MedicoDAO.listarTodos()) {
+            modelo.addRow(fila);
+        }
+    } catch (java.sql.SQLException e) {
+        jLabel11.setText("Error al cargar médicos: " + e.getMessage());
+    }
+}
+
+// ===== Limpiar campos =====
+private void limpiarCamposMedico() {
+    jTextFieldNombreMedico.setText("");
+    jTextFieldApPaterno.setText("");
+    jTextFieldApMaterno.setText("");
+    jTextFieldCedula.setText("");
+    jTextFieldHospital.setText("");
+    jFormattedTextFieldTelefono.setText("");
+    jTextField7.setText(""); // correo
+    jComboBoxEspecialidad.setSelectedIndex(0);
+    jTableMedicos.clearSelection();
+}
+
+
+
+
+
+
+
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton jButton1;
+    private javax.swing.JButton jButtonActualizarMedico;
+    private javax.swing.JButton jButtonEliminarMedico;
+    private javax.swing.JButton jButtonLimpiarMedico;
+    private javax.swing.JButton jButtonMenuP;
+    private javax.swing.JComboBox<String> jComboBoxEspecialidad;
+    private javax.swing.JTextField jFormattedTextFieldTelefono;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel10;
+    private javax.swing.JLabel jLabel11;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
+    private javax.swing.JLabel jLabel9;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTable jTableMedicos;
+    private javax.swing.JTextField jTextField7;
+    private javax.swing.JTextField jTextFieldApMaterno;
+    private javax.swing.JTextField jTextFieldApPaterno;
+    private javax.swing.JTextField jTextFieldCedula;
+    private javax.swing.JTextField jTextFieldHospital;
+    private javax.swing.JTextField jTextFieldNombreMedico;
+    // End of variables declaration//GEN-END:variables
+}
+
+
+
+=== ARCHIVO: \src\main\java\FramePacientes.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
+ */
+
+/**
+ *
+ * @author danim
+ */
+
+import java.util.List;
+public class FramePacientes extends javax.swing.JFrame {
+
+    /**
+     * Creates new form FramePacientes
+     */
+    public FramePacientes() {
+        initComponents();
+        cargarTablaPacientes();
+    }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        jPanel1 = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        jTextFieldNombrePaciente = new javax.swing.JTextField();
+        jLabel3 = new javax.swing.JLabel();
+        jTextFieldApPaternoPac = new javax.swing.JTextField();
+        jLabel4 = new javax.swing.JLabel();
+        jTextFieldApMaternoPac = new javax.swing.JTextField();
+        jLabel5 = new javax.swing.JLabel();
+        jTextFieldPeso = new javax.swing.JTextField();
+        jLabel6 = new javax.swing.JLabel();
+        jLabel7 = new javax.swing.JLabel();
+        jLabel8 = new javax.swing.JLabel();
+        jFormattedTextFieldTelPac = new javax.swing.JTextField();
+        jLabel9 = new javax.swing.JLabel();
+        jTextFieldCorreoPac = new javax.swing.JTextField();
+        jLabel10 = new javax.swing.JLabel();
+        jTextFieldAltura = new javax.swing.JTextField();
+        jComboBoxGenero = new javax.swing.JComboBox<>();
+        jDateChooserNacimiento = new com.toedter.calendar.JDateChooser();
+        jLabel11 = new javax.swing.JLabel();
+        jLabel12 = new javax.swing.JLabel();
+        jTextFieldIdPaciente = new javax.swing.JTextField();
+        jComboBoxTipoSangre = new javax.swing.JComboBox<>();
+        jLabel13 = new javax.swing.JLabel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jTablePacientes = new javax.swing.JTable();
+        jButtonGuardarPaciente = new javax.swing.JButton();
+        jButtonActualizarPaciente = new javax.swing.JButton();
+        jButtonBuscarPaciente = new javax.swing.JButton();
+        jButtonEliminarPaciente = new javax.swing.JButton();
+        jButtonLimpiarPaciente = new javax.swing.JButton();
+        jButtonRegresoMenu = new javax.swing.JButton();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+
+        jLabel1.setText("Alta Pacientes");
+
+        jLabel2.setText("Nombre(s)");
+
+        jTextFieldNombrePaciente.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jTextFieldNombrePacienteActionPerformed(evt);
+            }
+        });
+
+        jLabel3.setText("Apellido Paterno");
+
+        jLabel4.setText("Apellido Materno");
+
+        jLabel5.setText("Peso (kg)");
+
+        jLabel6.setText("Género");
+
+        jLabel7.setText("Fecha de nacimiento");
+
+        jLabel8.setText("Teléfono");
+
+        jLabel9.setText("Correo Electrónico");
+
+        jLabel10.setText("Altura");
+
+        jComboBoxGenero.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Masculino", "Femenino" }));
+
+        jLabel11.setText("Tipo de sangre");
+
+        jLabel12.setText("Identificador");
+
+        jComboBoxTipoSangre.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-" }));
+
+        jLabel13.setText("Pacientes Registrados");
+
+        jTablePacientes.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null}
+            },
+            new String [] {
+                "Title 1", "Title 2", "Title 3", "Title 4"
+            }
+        ));
+        jTablePacientes.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jTablePacientesMouseClicked(evt);
+            }
+        });
+        jScrollPane1.setViewportView(jTablePacientes);
+
+        jButtonGuardarPaciente.setBackground(new java.awt.Color(153, 204, 255));
+        jButtonGuardarPaciente.setText("Guardar");
+        jButtonGuardarPaciente.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonGuardarPacienteActionPerformed(evt);
+            }
+        });
+
+        jButtonActualizarPaciente.setText("Actualizar");
+        jButtonActualizarPaciente.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonActualizarPacienteActionPerformed(evt);
+            }
+        });
+
+        jButtonBuscarPaciente.setText("Buscar");
+        jButtonBuscarPaciente.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonBuscarPacienteActionPerformed(evt);
+            }
+        });
+
+        jButtonEliminarPaciente.setBackground(new java.awt.Color(255, 102, 102));
+        jButtonEliminarPaciente.setText("Eliminar");
+        jButtonEliminarPaciente.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonEliminarPacienteActionPerformed(evt);
+            }
+        });
+
+        jButtonLimpiarPaciente.setText("Limpiar");
+        jButtonLimpiarPaciente.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonLimpiarPacienteActionPerformed(evt);
+            }
+        });
+
+        jButtonRegresoMenu.setText("Regresar");
+        jButtonRegresoMenu.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonRegresoMenuActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(29, 29, 29)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 851, Short.MAX_VALUE)
+                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 259, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(jPanel1Layout.createSequentialGroup()
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                .addComponent(jLabel13, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(jFormattedTextFieldTelPac, javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(jTextFieldApMaternoPac, javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(jTextFieldNombrePaciente, javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(jLabel4, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel1Layout.createSequentialGroup()
+                                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                        .addComponent(jLabel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addComponent(jComboBoxGenero, 0, 173, Short.MAX_VALUE))
+                                    .addGap(32, 32, 32)
+                                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(jDateChooserNacimiento, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addComponent(jLabel7, javax.swing.GroupLayout.DEFAULT_SIZE, 176, Short.MAX_VALUE)))
+                                .addComponent(jLabel8, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addGap(70, 70, 70)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(jTextFieldApPaternoPac)
+                                .addComponent(jTextFieldCorreoPac)
+                                .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                        .addComponent(jTextFieldPeso)
+                                        .addComponent(jComboBoxTipoSangre, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addComponent(jLabel11, javax.swing.GroupLayout.DEFAULT_SIZE, 172, Short.MAX_VALUE)
+                                        .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 51, Short.MAX_VALUE)
+                                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                        .addComponent(jTextFieldAltura)
+                                        .addComponent(jTextFieldIdPaciente)
+                                        .addComponent(jLabel12, javax.swing.GroupLayout.DEFAULT_SIZE, 177, Short.MAX_VALUE)
+                                        .addComponent(jLabel10, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                                .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(jLabel9, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(jButtonGuardarPaciente, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButtonActualizarPaciente, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButtonEliminarPaciente, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButtonBuscarPaciente, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButtonLimpiarPaciente, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButtonRegresoMenu, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(93, Short.MAX_VALUE))
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(27, 27, 27)
+                .addComponent(jLabel1)
+                .addGap(18, 18, 18)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel2)
+                    .addComponent(jLabel3))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jTextFieldNombrePaciente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jTextFieldApPaternoPac, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel4)
+                    .addComponent(jLabel5)
+                    .addComponent(jLabel10))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jTextFieldApMaternoPac, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jTextFieldPeso, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jTextFieldAltura, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel6)
+                    .addComponent(jLabel7)
+                    .addComponent(jLabel11)
+                    .addComponent(jLabel12))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jComboBoxGenero, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jTextFieldIdPaciente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jComboBoxTipoSangre, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel8)
+                            .addComponent(jLabel9))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jFormattedTextFieldTelPac, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jTextFieldCorreoPac, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addComponent(jDateChooserNacimiento, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addComponent(jLabel13)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 227, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jButtonGuardarPaciente)
+                    .addComponent(jButtonActualizarPaciente)
+                    .addComponent(jButtonBuscarPaciente)
+                    .addComponent(jButtonEliminarPaciente)
+                    .addComponent(jButtonLimpiarPaciente)
+                    .addComponent(jButtonRegresoMenu))
+                .addContainerGap(51, Short.MAX_VALUE))
+        );
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, Short.MAX_VALUE))
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, Short.MAX_VALUE))
+        );
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void jTextFieldNombrePacienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldNombrePacienteActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jTextFieldNombrePacienteActionPerformed
+
+    private void jButtonGuardarPacienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonGuardarPacienteActionPerformed
+ String id = jTextFieldIdPaciente.getText().trim();
+
+    if (id.isEmpty() || jTextFieldNombrePaciente.getText().trim().isEmpty()
+            || jTextFieldApPaternoPac.getText().trim().isEmpty()
+            || jDateChooserNacimiento.getDate() == null) {
+        jLabel13.setText("Expediente, nombre, apellido paterno y fecha de nacimiento son obligatorios.");
+        return;
+    }
+
+    try {
+        if (PacienteDAO.existe(id)) {
+            jLabel13.setText("Ya existe un paciente con el expediente " + id + ".");
+            return;
+        }
+
+        double peso = jTextFieldPeso.getText().trim().isEmpty() ? 0
+                : Double.parseDouble(jTextFieldPeso.getText().trim());
+        double altura = jTextFieldAltura.getText().trim().isEmpty() ? 0
+                : Double.parseDouble(jTextFieldAltura.getText().trim());
+        java.sql.Date fechaNac = new java.sql.Date(jDateChooserNacimiento.getDate().getTime());
+
+        PacienteDAO.guardar(id,
+                jTextFieldNombrePaciente.getText().trim(),
+                jTextFieldApPaternoPac.getText().trim(),
+                jTextFieldApMaternoPac.getText().trim(),
+                jComboBoxGenero.getSelectedItem().toString(),
+                fechaNac, peso, altura,
+                jComboBoxTipoSangre.getSelectedItem().toString(),
+                jFormattedTextFieldTelPac.getText().trim(),
+                jTextFieldCorreoPac.getText().trim()
+        );
+        jLabel13.setText("Paciente guardado correctamente.");
+        limpiarCamposPaciente();
+        cargarTablaPacientes();
+    } catch (NumberFormatException e) {
+        jLabel13.setText("Peso y altura deben ser números (ej. 68.50).");
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al guardar: " + e.getMessage());
+    }        // TODO add your handling code here:
+    }//GEN-LAST:event_jButtonGuardarPacienteActionPerformed
+
+    private void jButtonLimpiarPacienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonLimpiarPacienteActionPerformed
+        // TODO add your handling code here:
+            limpiarCamposPaciente();
+
+    }//GEN-LAST:event_jButtonLimpiarPacienteActionPerformed
+
+    private void jButtonActualizarPacienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonActualizarPacienteActionPerformed
+
+        // TODO add your handling code here:
+        String id = jTextFieldIdPaciente.getText().trim();
+    if (id.isEmpty()) {
+        jLabel13.setText("Selecciona un paciente de la tabla para actualizar.");
+        return;
+    }
+
+    try {
+        double peso = jTextFieldPeso.getText().trim().isEmpty() ? 0
+                : Double.parseDouble(jTextFieldPeso.getText().trim());
+        double altura = jTextFieldAltura.getText().trim().isEmpty() ? 0
+                : Double.parseDouble(jTextFieldAltura.getText().trim());
+        java.sql.Date fechaNac = new java.sql.Date(jDateChooserNacimiento.getDate().getTime());
+
+        PacienteDAO.actualizar(id,
+                jTextFieldNombrePaciente.getText().trim(),
+                jTextFieldApPaternoPac.getText().trim(),
+                jTextFieldApMaternoPac.getText().trim(),
+                jComboBoxGenero.getSelectedItem().toString(),
+                fechaNac, peso, altura,
+                jComboBoxTipoSangre.getSelectedItem().toString(),
+                jFormattedTextFieldTelPac.getText().trim(),
+                jTextFieldCorreoPac.getText().trim()
+        );
+        jLabel13.setText("Paciente actualizado.");
+        limpiarCamposPaciente();
+        cargarTablaPacientes();
+    } catch (NumberFormatException e) {
+        jLabel13.setText("Peso y altura deben ser números.");
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al actualizar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonActualizarPacienteActionPerformed
+
+    private void jTablePacientesMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTablePacientesMouseClicked
+        // TODO add your handling code here:
+        int fila = jTablePacientes.getSelectedRow();
+    if (fila == -1) return;
+
+    javax.swing.table.DefaultTableModel modelo =
+            (javax.swing.table.DefaultTableModel) jTablePacientes.getModel();
+
+    jTextFieldIdPaciente.setText(modelo.getValueAt(fila, 0).toString());
+    jTextFieldIdPaciente.setEnabled(false); // el expediente no se edita una vez creado
+    jTextFieldNombrePaciente.setText(modelo.getValueAt(fila, 1).toString());
+    jTextFieldApPaternoPac.setText(modelo.getValueAt(fila, 2).toString());
+    jTextFieldApMaternoPac.setText(modelo.getValueAt(fila, 3) == null ? "" : modelo.getValueAt(fila, 3).toString());
+    jComboBoxGenero.setSelectedItem(modelo.getValueAt(fila, 4) == null ? "" : modelo.getValueAt(fila, 4).toString());
+
+    Object fechaObj = modelo.getValueAt(fila, 5);
+    if (fechaObj != null) {
+        jDateChooserNacimiento.setDate((java.util.Date) fechaObj);
+    }
+
+    jTextFieldPeso.setText(modelo.getValueAt(fila, 6).toString());
+    jTextFieldAltura.setText(modelo.getValueAt(fila, 7).toString());
+    jComboBoxTipoSangre.setSelectedItem(modelo.getValueAt(fila, 8) == null ? "" : modelo.getValueAt(fila, 8).toString());
+    jFormattedTextFieldTelPac.setText(modelo.getValueAt(fila, 9) == null ? "" : modelo.getValueAt(fila, 9).toString());
+    jTextFieldCorreoPac.setText(modelo.getValueAt(fila, 10) == null ? "" : modelo.getValueAt(fila, 10).toString());
+    }//GEN-LAST:event_jTablePacientesMouseClicked
+
+    private void jButtonEliminarPacienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonEliminarPacienteActionPerformed
+        // TODO add your handling code here:
+          String id = jTextFieldIdPaciente.getText().trim();
+    if (id.isEmpty()) {
+        jLabel13.setText("Selecciona un paciente de la tabla para eliminar.");
+        return;
+    }
+
+    try {
+        PacienteDAO.eliminar(id);
+        jLabel13.setText("Paciente eliminado.");
+        limpiarCamposPaciente();
+        cargarTablaPacientes();
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al eliminar (revisa que no tenga consultas o internamientos ligados): " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonEliminarPacienteActionPerformed
+
+    private void jButtonBuscarPacienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonBuscarPacienteActionPerformed
+        // TODO add your handling code here:
+        String texto = jTextFieldIdPaciente.getText().trim();
+    if (texto.isEmpty()) {
+        texto = jTextFieldNombrePaciente.getText().trim();
+    }
+    if (texto.isEmpty()) {
+        jLabel13.setText("Escribe un expediente o nombre para buscar.");
+        return;
+    }
+
+    try {
+        javax.swing.table.DefaultTableModel modelo =
+                (javax.swing.table.DefaultTableModel) jTablePacientes.getModel();
+        modelo.setRowCount(0);
+
+        List<Object[]> resultados = PacienteDAO.buscar(texto);
+        for (Object[] fila : resultados) {
+            modelo.addRow(fila);
+        }
+        jLabel13.setText(resultados.size() + " resultado(s) encontrado(s).");
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al buscar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonBuscarPacienteActionPerformed
+
+    private void jButtonRegresoMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonRegresoMenuActionPerformed
+        // TODO add your handling code here:
+        new Menu().setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButtonRegresoMenuActionPerformed
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         */
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(FramePacientes.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(FramePacientes.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(FramePacientes.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(FramePacientes.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+        /* Create and display the form */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new FramePacientes().setVisible(true);
+            }
+        });
+    }
+    
+    
+    
+    
+    // ===== Cargar la tabla de pacientes =====
+private void cargarTablaPacientes() {
+    try {
+        javax.swing.table.DefaultTableModel modelo =
+                (javax.swing.table.DefaultTableModel) jTablePacientes.getModel();
+        modelo.setRowCount(0);
+        modelo.setColumnIdentifiers(new String[]{
+            "Expediente", "Nombre", "Ap. Paterno", "Ap. Materno", "Género",
+            "F. Nacimiento", "Peso", "Altura", "Tipo Sangre", "Teléfono", "Correo"
+        });
+
+        for (Object[] fila : PacienteDAO.listarTodos()) {
+            modelo.addRow(fila);
+        }
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al cargar pacientes: " + e.getMessage());
+    }
+}
+
+// ===== Limpiar campos =====
+private void limpiarCamposPaciente() {
+    jTextFieldIdPaciente.setText("");
+    jTextFieldIdPaciente.setEnabled(true); // por si estaba bloqueado tras seleccionar uno
+    jTextFieldNombrePaciente.setText("");
+    jTextFieldApPaternoPac.setText("");
+    jTextFieldApMaternoPac.setText("");
+    jTextFieldPeso.setText("");
+    jTextFieldAltura.setText("");
+    jFormattedTextFieldTelPac.setText("");
+    jTextFieldCorreoPac.setText("");
+    jComboBoxGenero.setSelectedIndex(0);
+    jComboBoxTipoSangre.setSelectedIndex(0);
+    jDateChooserNacimiento.setDate(null);
+    jTablePacientes.clearSelection();
+}
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton jButtonActualizarPaciente;
+    private javax.swing.JButton jButtonBuscarPaciente;
+    private javax.swing.JButton jButtonEliminarPaciente;
+    private javax.swing.JButton jButtonGuardarPaciente;
+    private javax.swing.JButton jButtonLimpiarPaciente;
+    private javax.swing.JButton jButtonRegresoMenu;
+    private javax.swing.JComboBox<String> jComboBoxGenero;
+    private javax.swing.JComboBox<String> jComboBoxTipoSangre;
+    private com.toedter.calendar.JDateChooser jDateChooserNacimiento;
+    private javax.swing.JTextField jFormattedTextFieldTelPac;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel10;
+    private javax.swing.JLabel jLabel11;
+    private javax.swing.JLabel jLabel12;
+    private javax.swing.JLabel jLabel13;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
+    private javax.swing.JLabel jLabel9;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTable jTablePacientes;
+    private javax.swing.JTextField jTextFieldAltura;
+    private javax.swing.JTextField jTextFieldApMaternoPac;
+    private javax.swing.JTextField jTextFieldApPaternoPac;
+    private javax.swing.JTextField jTextFieldCorreoPac;
+    private javax.swing.JTextField jTextFieldIdPaciente;
+    private javax.swing.JTextField jTextFieldNombrePaciente;
+    private javax.swing.JTextField jTextFieldPeso;
+    // End of variables declaration//GEN-END:variables
+}
+
+
+
+=== ARCHIVO: \src\main\java\FrameRecetas.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
+ */
+
+/**
+ *
+ * @author danim
+ */
+import java.util.ArrayList;
+import java.util.List;
+
+public class FrameRecetas extends javax.swing.JFrame {
+    private int idConsultaActual;
+private List<Object[]> filasPendientes = new ArrayList<>(); // {idMedicamento, nombreMostrado, dosis, frecuencia, duracion}
+
+    /**
+     * Creates new form FrameRecetas
+     */
+    public FrameRecetas() {
+        initComponents();
+        cargarComboMedicamento();
+        inicializarTablaMedicamentos();
+    }
+    public FrameRecetas(int idConsulta) {
+    initComponents();
+    this.idConsultaActual = idConsulta;
+    cargarComboMedicamento();
+    // Deja fijo el combo de consulta mostrando solo esta consulta (no dejes cambiarlo)
+    javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+    modelo.addElement(new ComboItem(String.valueOf(idConsulta), "Consulta #" + idConsulta));
+    jComboBoxConsultaReceta.setModel(modelo);
+    jComboBoxConsultaReceta.setEnabled(false);
+    inicializarTablaMedicamentos();
+    }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        jPanel1 = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        jComboBoxConsultaReceta = new javax.swing.JComboBox<>();
+        jLabel3 = new javax.swing.JLabel();
+        jTextAreaIndicacionesGenerales = new javax.swing.JTextField();
+        jLabel4 = new javax.swing.JLabel();
+        jLabel5 = new javax.swing.JLabel();
+        jComboBoxMedicamento = new javax.swing.JComboBox<>();
+        jLabel6 = new javax.swing.JLabel();
+        jTextFieldDosis = new javax.swing.JTextField();
+        jLabel7 = new javax.swing.JLabel();
+        jLabel8 = new javax.swing.JLabel();
+        jTextFieldFrecuencia = new javax.swing.JTextField();
+        jTextFieldDuracion = new javax.swing.JTextField();
+        jButtonQuitarMedicamento = new javax.swing.JButton();
+        jButton2 = new javax.swing.JButton();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jTableMedicamentosReceta = new javax.swing.JTable();
+        jButtonGuardarReceta = new javax.swing.JButton();
+        jButtonImprimirReceta = new javax.swing.JButton();
+        jButtonLimpiarReceta = new javax.swing.JButton();
+        jButtonRegresarAlMenu = new javax.swing.JButton();
+        jLabelStatusReceta = new javax.swing.JLabel();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+
+        jLabel1.setText("Emitir Receta");
+
+        jLabel2.setText("Consulta Asociada");
+
+        jComboBoxConsultaReceta.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        jLabel3.setText("Indicaciones Generales");
+
+        jLabel4.setText("Medicamentos de la Receta");
+
+        jLabel5.setText("Medicamento");
+
+        jComboBoxMedicamento.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        jLabel6.setText("Dosis (mg)");
+
+        jTextFieldDosis.setText("500 ");
+        jTextFieldDosis.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jTextFieldDosisActionPerformed(evt);
+            }
+        });
+
+        jLabel7.setText("Frecuencia");
+
+        jLabel8.setText("Duración");
+
+        jTextFieldFrecuencia.setText("8 horas");
+
+        jTextFieldDuracion.setText("1 semana");
+        jTextFieldDuracion.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jTextFieldDuracionActionPerformed(evt);
+            }
+        });
+
+        jButtonQuitarMedicamento.setText("Quitar");
+        jButtonQuitarMedicamento.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonQuitarMedicamentoActionPerformed(evt);
+            }
+        });
+
+        jButton2.setText("Agregar Medicamento");
+        jButton2.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton2ActionPerformed(evt);
+            }
+        });
+
+        jTableMedicamentosReceta.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null}
+            },
+            new String [] {
+                "Title 1", "Title 2", "Title 3", "Title 4"
+            }
+        ));
+        jScrollPane1.setViewportView(jTableMedicamentosReceta);
+
+        jButtonGuardarReceta.setBackground(new java.awt.Color(153, 204, 255));
+        jButtonGuardarReceta.setText("Guardar Receta");
+        jButtonGuardarReceta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonGuardarRecetaActionPerformed(evt);
+            }
+        });
+
+        jButtonImprimirReceta.setText("Imprimir");
+        jButtonImprimirReceta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonImprimirRecetaActionPerformed(evt);
+            }
+        });
+
+        jButtonLimpiarReceta.setText("Limpiar");
+        jButtonLimpiarReceta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonLimpiarRecetaActionPerformed(evt);
+            }
+        });
+
+        jButtonRegresarAlMenu.setText("Regresar");
+        jButtonRegresarAlMenu.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonRegresarAlMenuActionPerformed(evt);
+            }
+        });
+
+        jLabelStatusReceta.setText("jLabel9");
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(33, 33, 33)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 881, Short.MAX_VALUE)
+                    .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 261, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 160, Short.MAX_VALUE)
+                            .addComponent(jComboBoxConsultaReceta, javax.swing.GroupLayout.Alignment.LEADING, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addGap(18, 18, 18)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, 703, Short.MAX_VALUE)
+                            .addComponent(jTextAreaIndicacionesGenerales)))
+                    .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addComponent(jComboBoxMedicamento, javax.swing.GroupLayout.Alignment.LEADING, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jLabel5, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 296, Short.MAX_VALUE))
+                        .addGap(18, 18, 18)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jTextFieldDosis, javax.swing.GroupLayout.DEFAULT_SIZE, 126, Short.MAX_VALUE))
+                        .addGap(18, 18, 18)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jTextFieldFrecuencia, javax.swing.GroupLayout.DEFAULT_SIZE, 126, Short.MAX_VALUE))
+                        .addGap(18, 18, 18)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jTextFieldDuracion, javax.swing.GroupLayout.DEFAULT_SIZE, 152, Short.MAX_VALUE))
+                        .addGap(18, 18, 18)
+                        .addComponent(jButtonQuitarMedicamento, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 296, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(jButtonGuardarReceta, javax.swing.GroupLayout.PREFERRED_SIZE, 148, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButtonImprimirReceta, javax.swing.GroupLayout.PREFERRED_SIZE, 148, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButtonLimpiarReceta, javax.swing.GroupLayout.PREFERRED_SIZE, 148, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButtonRegresarAlMenu, javax.swing.GroupLayout.PREFERRED_SIZE, 148, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabelStatusReceta, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(56, Short.MAX_VALUE))
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(17, 17, 17)
+                .addComponent(jLabel1)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel2)
+                    .addComponent(jLabel3))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jComboBoxConsultaReceta, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jTextAreaIndicacionesGenerales, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addComponent(jLabel4)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel5)
+                            .addComponent(jLabel6)
+                            .addComponent(jLabel7)
+                            .addComponent(jLabel8))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jComboBoxMedicamento, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jTextFieldDosis, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jTextFieldFrecuencia, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jTextFieldDuracion, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGap(50, 50, 50)
+                        .addComponent(jButtonQuitarMedicamento, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jButton2)
+                .addGap(31, 31, 31)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 249, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(26, 26, 26)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jButtonGuardarReceta)
+                    .addComponent(jButtonImprimirReceta)
+                    .addComponent(jButtonLimpiarReceta)
+                    .addComponent(jButtonRegresarAlMenu))
+                .addGap(18, 18, 18)
+                .addComponent(jLabelStatusReceta)
+                .addGap(66, 66, 66))
+        );
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 6, Short.MAX_VALUE))
+        );
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void jButtonQuitarMedicamentoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonQuitarMedicamentoActionPerformed
+        // TODO add your handling code here:
+        int fila = jTableMedicamentosReceta.getSelectedRow();
+    if (fila == -1) return;
+
+    filasPendientes.remove(fila);
+    javax.swing.table.DefaultTableModel modelo =
+            (javax.swing.table.DefaultTableModel) jTableMedicamentosReceta.getModel();
+    modelo.removeRow(fila);
+    }//GEN-LAST:event_jButtonQuitarMedicamentoActionPerformed
+
+    private void jTextFieldDuracionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldDuracionActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jTextFieldDuracionActionPerformed
+
+    private void jButtonImprimirRecetaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonImprimirRecetaActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jButtonImprimirRecetaActionPerformed
+
+    private void jTextFieldDosisActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldDosisActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jTextFieldDosisActionPerformed
+
+    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+        // TODO add your handling code here:
+        ComboItem medicamento = (ComboItem) jComboBoxMedicamento.getSelectedItem();
+
+    if (medicamento == null || jTextFieldDosis.getText().trim().isEmpty()
+            || jTextFieldFrecuencia.getText().trim().isEmpty()
+            || jTextFieldDuracion.getText().trim().isEmpty()) {
+        return; // si tienes un jLabel de status, avisa aquí
+    }
+
+    filasPendientes.add(new Object[]{
+        Integer.parseInt(medicamento.getId()),
+        medicamento.toString(),
+        jTextFieldDosis.getText().trim(),
+        jTextFieldFrecuencia.getText().trim(),
+        jTextFieldDuracion.getText().trim()
+    });
+
+    javax.swing.table.DefaultTableModel modelo =
+            (javax.swing.table.DefaultTableModel) jTableMedicamentosReceta.getModel();
+    modelo.addRow(new Object[]{
+        medicamento.toString(),
+        jTextFieldDosis.getText().trim(),
+        jTextFieldFrecuencia.getText().trim(),
+        jTextFieldDuracion.getText().trim()
+    });
+
+    jTextFieldDosis.setText("");
+    jTextFieldFrecuencia.setText("");
+    jTextFieldDuracion.setText("");
+    }//GEN-LAST:event_jButton2ActionPerformed
+
+    private void jButtonGuardarRecetaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonGuardarRecetaActionPerformed
+        // TODO add your handling code here:
+        if (idConsultaActual == 0) {
+        return; // no debería pasar si siempre abres este frame desde "Ir a Receta"
+    }
+
+    try {
+        // filasPendientes trae {idMedicamento, nombreMostrado, dosis, frecuencia, duracion}
+        // RecetaDAO solo necesita {idMedicamento, dosis, frecuencia, duracion}
+        List<Object[]> filasParaGuardar = new ArrayList<>();
+        for (Object[] fila : filasPendientes) {
+            filasParaGuardar.add(new Object[]{fila[0], fila[2], fila[3], fila[4]});
+        }
+
+        RecetaDAO.guardarRecetaCompleta(idConsultaActual,
+                jTextAreaIndicacionesGenerales.getText().trim(),
+                filasParaGuardar);
+
+        javax.swing.JOptionPane.showMessageDialog(this, "Receta guardada correctamente.");
+        jLabelStatusReceta.setText("Receta guardada correctamente.");
+    } catch (java.sql.SQLException e) {
+        jLabelStatusReceta.setText("Error al guardar la receta: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonGuardarRecetaActionPerformed
+
+    private void jButtonLimpiarRecetaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonLimpiarRecetaActionPerformed
+        // TODO add your handling code here:
+        filasPendientes.clear();
+    inicializarTablaMedicamentos();
+    jTextAreaIndicacionesGenerales.setText("");
+    jTextFieldDosis.setText("");
+    jTextFieldFrecuencia.setText("");
+    jTextFieldDuracion.setText("");
+    }//GEN-LAST:event_jButtonLimpiarRecetaActionPerformed
+
+    private void jButtonRegresarAlMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonRegresarAlMenuActionPerformed
+        // TODO add your handling code here:
+        new Menu().setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButtonRegresarAlMenuActionPerformed
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         */
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(FrameRecetas.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(FrameRecetas.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(FrameRecetas.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(FrameRecetas.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+        /* Create and display the form */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new FrameRecetas().setVisible(true);
+            }
+        });
+    }
+    
+    
+    private void cargarComboMedicamento() {
+    try {
+        javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+        for (Object[] fila : MedicamentoDAO.listarTodos()) {
+            String id = fila[0].toString();
+            String nombre = fila[1] + " (" + fila[2] + " " + fila[3] + ")";
+            modelo.addElement(new ComboItem(id, nombre));
+        }
+        jComboBoxMedicamento.setModel(modelo);
+    } catch (java.sql.SQLException e) {
+        // si tienes un jLabel de status en este frame, muéstralo ahí
+        jLabelStatusReceta.setText("Error al cargar medicamentos: " + e.getMessage());
+    }
+}
+
+// ===== Preparar la tabla visual de medicamentos de la receta =====
+private void inicializarTablaMedicamentos() {
+    javax.swing.table.DefaultTableModel modelo =
+            (javax.swing.table.DefaultTableModel) jTableMedicamentosReceta.getModel();
+    modelo.setRowCount(0);
+    modelo.setColumnIdentifiers(new String[]{"Medicamento", "Dosis", "Frecuencia", "Duración"});
+}
+
+
+
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton jButton2;
+    private javax.swing.JButton jButtonGuardarReceta;
+    private javax.swing.JButton jButtonImprimirReceta;
+    private javax.swing.JButton jButtonLimpiarReceta;
+    private javax.swing.JButton jButtonQuitarMedicamento;
+    private javax.swing.JButton jButtonRegresarAlMenu;
+    private javax.swing.JComboBox<String> jComboBoxConsultaReceta;
+    private javax.swing.JComboBox<String> jComboBoxMedicamento;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
+    private javax.swing.JLabel jLabelStatusReceta;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTable jTableMedicamentosReceta;
+    private javax.swing.JTextField jTextAreaIndicacionesGenerales;
+    private javax.swing.JTextField jTextFieldDosis;
+    private javax.swing.JTextField jTextFieldDuracion;
+    private javax.swing.JTextField jTextFieldFrecuencia;
+    // End of variables declaration//GEN-END:variables
+}
+
+
+
+=== ARCHIVO: \src\main\java\InternamientoDAO.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
+/**
+ *
+ * @author danim
+ */
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+public class InternamientoDAO {
+
+    // Registra la entrada. Fecha y hora se toman del sistema, NO se reciben como parámetro.
+    public static void registrarEntrada(String idPaciente, int idMedicoResponsable,
+            String tipoPaciente, String motivoEntrada, String observacionesEntrada) throws SQLException {
+
+        LocalDateTime ahora = LocalDateTime.now();
+
+        String sql = "INSERT INTO internamientos "
+                + "(id_paciente, id_medico_responsable, tipo_paciente, fecha_entrada, hora_entrada, "
+                + "motivo_entrada, observaciones_entrada, estado) "
+                + "VALUES (?,?,?,?,?,?,?,'activo')";
+
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, idPaciente);
+            ps.setInt(2, idMedicoResponsable);
+            ps.setString(3, tipoPaciente);
+            ps.setDate(4, java.sql.Date.valueOf(ahora.toLocalDate()));
+            ps.setTime(5, java.sql.Time.valueOf(ahora.toLocalTime().withNano(0)));
+            ps.setString(6, motivoEntrada);
+            ps.setString(7, observacionesEntrada);
+            ps.executeUpdate();
+        }
+    }
+
+    // Registra la salida de un internamiento ya existente (por su ID). Hora automática también.
+    public static void registrarSalida(int idInternamiento, String motivoSalida,
+            String observacionesSalida) throws SQLException {
+
+        LocalDateTime ahora = LocalDateTime.now();
+
+        String sql = "UPDATE internamientos SET fecha_salida=?, hora_salida=?, "
+                + "motivo_salida=?, observaciones_salida=?, estado='dado_de_alta' "
+                + "WHERE id_internamiento=?";
+
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setDate(1, java.sql.Date.valueOf(ahora.toLocalDate()));
+            ps.setTime(2, java.sql.Time.valueOf(ahora.toLocalTime().withNano(0)));
+            ps.setString(3, motivoSalida);
+            ps.setString(4, observacionesSalida);
+            ps.setInt(5, idInternamiento);
+            ps.executeUpdate();
+        }
+    }
+
+    // Solo permite corregir motivo/observaciones de entrada mientras sigue activo.
+    // Fecha/hora nunca se editan a mano.
+    public static void actualizarDatosEntrada(int idInternamiento, String motivoEntrada,
+            String observacionesEntrada) throws SQLException {
+
+        String sql = "UPDATE internamientos SET motivo_entrada=?, observaciones_entrada=? "
+                + "WHERE id_internamiento=? AND estado='activo'";
+
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, motivoEntrada);
+            ps.setString(2, observacionesEntrada);
+            ps.setInt(3, idInternamiento);
+            ps.executeUpdate();
+        }
+    }
+
+    public static List<Object[]> listarTodos() throws SQLException {
+        String sql = "SELECT i.id_internamiento, "
+                + "p.nombre || ' ' || p.apellido_paterno AS paciente, "
+                + "i.fecha_entrada, i.hora_entrada, i.fecha_salida, i.hora_salida, i.estado "
+                + "FROM internamientos i "
+                + "JOIN pacientes p ON p.id_paciente = i.id_paciente "
+                + "ORDER BY i.id_internamiento DESC";
+
+        List<Object[]> lista = new ArrayList<>();
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                lista.add(new Object[]{
+                    rs.getInt("id_internamiento"),
+                    rs.getString("paciente"),
+                    rs.getDate("fecha_entrada"),
+                    rs.getTime("hora_entrada"),
+                    rs.getDate("fecha_salida"),
+                    rs.getTime("hora_salida"),
+                    rs.getString("estado")
+                });
+            }
+        }
+        return lista;
+    }
+}
+
+
+
+=== ARCHIVO: \src\main\java\MedicamentoDAO.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
+/**
+ *
+ * @author danim
+ */
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+public class MedicamentoDAO {
+
+    public static List<Object[]> listarTodos() throws SQLException {
+        String sql = "SELECT id_medicamento, nombre, presentacion, concentracion "
+                + "FROM medicamentos ORDER BY nombre";
+
+        List<Object[]> lista = new ArrayList<>();
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                lista.add(new Object[]{
+                    rs.getInt("id_medicamento"),
+                    rs.getString("nombre"),
+                    rs.getString("presentacion"),
+                    rs.getString("concentracion")
+                });
+            }
+        }
+        return lista;
+    }
+}
+
+
+
+=== ARCHIVO: \src\main\java\MedicoDAO.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
+/**
+ *
+ * @author danim
+ */
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+public class MedicoDAO {
+
+    public static void guardar(String nombre, String apPaterno, String apMaterno,
+            String cedula, String especialidad, String hospital,
+            String telefono, String correo) throws SQLException {
+
+        String sql = "INSERT INTO medicos (nombre, apellido_paterno, apellido_materno, "
+                + "cedula, especialidad, hospital, telefono, correo) "
+                + "VALUES (?,?,?,?,?,?,?,?)";
+
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, nombre);
+            ps.setString(2, apPaterno);
+            ps.setString(3, apMaterno);
+            ps.setString(4, cedula);
+            ps.setString(5, especialidad);
+            ps.setString(6, hospital);
+            ps.setString(7, telefono);
+            ps.setString(8, correo);
+            ps.executeUpdate();
+        }
+    }
+
+    public static void actualizar(int idMedico, String nombre, String apPaterno, String apMaterno,
+            String cedula, String especialidad, String hospital,
+            String telefono, String correo) throws SQLException {
+
+        String sql = "UPDATE medicos SET nombre=?, apellido_paterno=?, apellido_materno=?, "
+                + "cedula=?, especialidad=?, hospital=?, telefono=?, correo=? "
+                + "WHERE id_medico=?";
+
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, nombre);
+            ps.setString(2, apPaterno);
+            ps.setString(3, apMaterno);
+            ps.setString(4, cedula);
+            ps.setString(5, especialidad);
+            ps.setString(6, hospital);
+            ps.setString(7, telefono);
+            ps.setString(8, correo);
+            ps.setInt(9, idMedico);
+            ps.executeUpdate();
+        }
+    }
+
+    public static void eliminar(int idMedico) throws SQLException {
+        String sql = "DELETE FROM medicos WHERE id_medico=?";
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, idMedico);
+            ps.executeUpdate();
+        }
+    }
+
+    public static List<Object[]> listarTodos() throws SQLException {
+        String sql = "SELECT id_medico, nombre, apellido_paterno, apellido_materno, "
+                + "cedula, especialidad, hospital, telefono, correo "
+                + "FROM medicos ORDER BY id_medico";
+
+        List<Object[]> lista = new ArrayList<>();
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                lista.add(new Object[]{
+                    rs.getInt("id_medico"),
+                    rs.getString("nombre"),
+                    rs.getString("apellido_paterno"),
+                    rs.getString("apellido_materno"),
+                    rs.getString("cedula"),
+                    rs.getString("especialidad"),
+                    rs.getString("hospital"),
+                    rs.getString("telefono"),
+                    rs.getString("correo")
+                });
+            }
+        }
+        return lista;
+    }
+}
+
+
+
+=== ARCHIVO: \src\main\java\Menu.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
+ */
+
+/**
+ *
+ * @author danim
+ */
+public class Menu extends javax.swing.JFrame {
+
+    /**
+     * Creates new form Menu
+     */
+    public Menu() {
+        initComponents();
+    }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        jPanel1 = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
+        jButton1 = new javax.swing.JButton();
+        jButton2 = new javax.swing.JButton();
+        jButton3 = new javax.swing.JButton();
+        jButton4 = new javax.swing.JButton();
+        jButton5 = new javax.swing.JButton();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+
+        jLabel1.setText("Menú Principal");
+
+        jButton1.setText("Registrar Médico");
+        jButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton1ActionPerformed(evt);
+            }
+        });
+
+        jButton2.setText("Registrar Paciente");
+        jButton2.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton2ActionPerformed(evt);
+            }
+        });
+
+        jButton3.setText("Registrar internamientos");
+        jButton3.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton3ActionPerformed(evt);
+            }
+        });
+
+        jButton4.setText("Consultas");
+        jButton4.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton4ActionPerformed(evt);
+            }
+        });
+
+        jButton5.setText("Recetas");
+        jButton5.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton5ActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                .addContainerGap(381, Short.MAX_VALUE)
+                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 282, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(289, 289, 289))
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(166, 166, 166)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jButton5, javax.swing.GroupLayout.PREFERRED_SIZE, 565, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jButton4, javax.swing.GroupLayout.PREFERRED_SIZE, 565, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jButton3, javax.swing.GroupLayout.PREFERRED_SIZE, 565, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 565, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 565, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(160, 160, 160)
+                .addComponent(jLabel1)
+                .addGap(47, 47, 47)
+                .addComponent(jButton1)
+                .addGap(18, 18, 18)
+                .addComponent(jButton2)
+                .addGap(18, 18, 18)
+                .addComponent(jButton3)
+                .addGap(18, 18, 18)
+                .addComponent(jButton4)
+                .addGap(18, 18, 18)
+                .addComponent(jButton5)
+                .addContainerGap(215, Short.MAX_VALUE))
+        );
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+        // TODO add your handling code here:
+        new FrameMedicos().setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButton1ActionPerformed
+
+    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+        // TODO add your handling code here:
+        new FramePacientes().setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButton2ActionPerformed
+
+    private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
+        // TODO add your handling code here:
+        new FrameInternamiento().setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButton3ActionPerformed
+
+    private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
+        // TODO add your handling code here:
+        new FrameConsulta().setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButton4ActionPerformed
+
+    private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
+        // TODO add your handling code here:
+        new FrameRecetas().setVisible(true); // constructor vacío, sin consulta asociada todavía
+    this.dispose();
+    }//GEN-LAST:event_jButton5ActionPerformed
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         */
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(Menu.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(Menu.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(Menu.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(Menu.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+        /* Create and display the form */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new Menu().setVisible(true);
+            }
+        });
+    }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton jButton1;
+    private javax.swing.JButton jButton2;
+    private javax.swing.JButton jButton3;
+    private javax.swing.JButton jButton4;
+    private javax.swing.JButton jButton5;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JPanel jPanel1;
+    // End of variables declaration//GEN-END:variables
+}
+
+
+
+=== ARCHIVO: \src\main\java\PacienteDAO.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
+/**
+ *
+ * @author danim
+ */
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+public class PacienteDAO {
+
+    public static boolean existe(String idPaciente) throws SQLException {
+        String sql = "SELECT 1 FROM pacientes WHERE id_paciente = ?";
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, idPaciente);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    public static void guardar(String idPaciente, String nombre, String apPaterno, String apMaterno,
+            String genero, Date fechaNacimiento, double peso, double altura,
+            String tipoSangre, String telefono, String correo) throws SQLException {
+
+        String sql = "INSERT INTO pacientes (id_paciente, nombre, apellido_paterno, apellido_materno, "
+                + "genero, fecha_nacimiento, peso, altura, tipo_sangre, telefono, correo) "
+                + "VALUES (?,?,?,?,?,?,?,?,?,?,?)";
+
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, idPaciente);
+            ps.setString(2, nombre);
+            ps.setString(3, apPaterno);
+            ps.setString(4, apMaterno);
+            ps.setString(5, genero);
+            ps.setDate(6, fechaNacimiento);
+            ps.setDouble(7, peso);
+            ps.setDouble(8, altura);
+            ps.setString(9, tipoSangre);
+            ps.setString(10, telefono);
+            ps.setString(11, correo);
+            ps.executeUpdate();
+        }
+    }
+
+    public static void actualizar(String idPaciente, String nombre, String apPaterno, String apMaterno,
+            String genero, Date fechaNacimiento, double peso, double altura,
+            String tipoSangre, String telefono, String correo) throws SQLException {
+
+        String sql = "UPDATE pacientes SET nombre=?, apellido_paterno=?, apellido_materno=?, "
+                + "genero=?, fecha_nacimiento=?, peso=?, altura=?, tipo_sangre=?, telefono=?, correo=? "
+                + "WHERE id_paciente=?";
+
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, nombre);
+            ps.setString(2, apPaterno);
+            ps.setString(3, apMaterno);
+            ps.setString(4, genero);
+            ps.setDate(5, fechaNacimiento);
+            ps.setDouble(6, peso);
+            ps.setDouble(7, altura);
+            ps.setString(8, tipoSangre);
+            ps.setString(9, telefono);
+            ps.setString(10, correo);
+            ps.setString(11, idPaciente);
+            ps.executeUpdate();
+        }
+    }
+
+    public static void eliminar(String idPaciente) throws SQLException {
+        String sql = "DELETE FROM pacientes WHERE id_paciente=?";
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, idPaciente);
+            ps.executeUpdate();
+        }
+    }
+
+    public static List<Object[]> listarTodos() throws SQLException {
+        String sql = "SELECT id_paciente, nombre, apellido_paterno, apellido_materno, genero, "
+                + "fecha_nacimiento, peso, altura, tipo_sangre, telefono, correo "
+                + "FROM pacientes ORDER BY id_paciente";
+
+        List<Object[]> lista = new ArrayList<>();
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                lista.add(new Object[]{
+                    rs.getString("id_paciente"),
+                    rs.getString("nombre"),
+                    rs.getString("apellido_paterno"),
+                    rs.getString("apellido_materno"),
+                    rs.getString("genero"),
+                    rs.getDate("fecha_nacimiento"),
+                    rs.getDouble("peso"),
+                    rs.getDouble("altura"),
+                    rs.getString("tipo_sangre"),
+                    rs.getString("telefono"),
+                    rs.getString("correo")
+                });
+            }
+        }
+        return lista;
+    }
+
+    public static List<Object[]> buscar(String texto) throws SQLException {
+        String sql = "SELECT id_paciente, nombre, apellido_paterno, apellido_materno, genero, "
+                + "fecha_nacimiento, peso, altura, tipo_sangre, telefono, correo "
+                + "FROM pacientes "
+                + "WHERE id_paciente ILIKE ? OR nombre ILIKE ? OR apellido_paterno ILIKE ? "
+                + "ORDER BY id_paciente";
+
+        List<Object[]> lista = new ArrayList<>();
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            String patron = "%" + texto + "%";
+            ps.setString(1, patron);
+            ps.setString(2, patron);
+            ps.setString(3, patron);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(new Object[]{
+                        rs.getString("id_paciente"),
+                        rs.getString("nombre"),
+                        rs.getString("apellido_paterno"),
+                        rs.getString("apellido_materno"),
+                        rs.getString("genero"),
+                        rs.getDate("fecha_nacimiento"),
+                        rs.getDouble("peso"),
+                        rs.getDouble("altura"),
+                        rs.getString("tipo_sangre"),
+                        rs.getString("telefono"),
+                        rs.getString("correo")
+                    });
+                }
+            }
+        }
+        return lista;
+    }
+}
+
+
+
+=== ARCHIVO: \src\main\java\RecetaDAO.java ===
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
+/**
+ *
+ * @author danim
+ */
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
+
+public class RecetaDAO {
+
+    // filaMedicamentos: cada elemento es {idMedicamento (Integer), dosis, frecuencia, duracion}
+    public static void guardarRecetaCompleta(int idConsulta, String indicacionesGenerales,
+            List<Object[]> filaMedicamentos) throws SQLException {
+
+        if (filaMedicamentos.isEmpty()) {
+            throw new SQLException("Agrega al menos un medicamento antes de guardar.");
+        }
+
+        try (Connection con = Conexion.obtenerConexion()) {
+            con.setAutoCommit(false);
+            try {
+                int idReceta;
+                String sqlReceta = "INSERT INTO recetas (id_consulta, fecha_emision, indicaciones_generales) "
+                        + "VALUES (?,?,?)";
+                try (PreparedStatement ps = con.prepareStatement(sqlReceta, Statement.RETURN_GENERATED_KEYS)) {
+                    ps.setInt(1, idConsulta);
+                    ps.setTimestamp(2, Timestamp.valueOf(java.time.LocalDateTime.now()));
+                    ps.setString(3, indicacionesGenerales);
+                    ps.executeUpdate();
+
+                    try (ResultSet rs = ps.getGeneratedKeys()) {
+                        if (!rs.next()) {
+                            throw new SQLException("No se pudo obtener el ID de la receta generada.");
+                        }
+                        idReceta = rs.getInt(1);
+                    }
+                }
+
+                String sqlDetalle = "INSERT INTO receta_detalle "
+                        + "(id_receta, id_medicamento, dosis, frecuencia, duracion) VALUES (?,?,?,?,?)";
+                try (PreparedStatement ps = con.prepareStatement(sqlDetalle)) {
+                    for (Object[] fila : filaMedicamentos) {
+                        ps.setInt(1, idReceta);
+                        ps.setInt(2, (int) fila[0]);
+                        ps.setString(3, (String) fila[1]);
+                        ps.setString(4, (String) fila[2]);
+                        ps.setString(5, (String) fila[3]);
+                        ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
+
+                con.commit();
+            } catch (SQLException e) {
+                con.rollback();
+                throw e;
+            } finally {
+                con.setAutoCommit(true);
+            }
+        }
+    }
+
+    public static List<Object[]> listarConsultasSinReceta() throws SQLException {
+        // Consultas que todavía no tienen receta emitida
+        String sql = "SELECT c.id_consulta, "
+                + "p.nombre || ' ' || p.apellido_paterno AS paciente, c.fecha_consulta "
+                + "FROM consultas c "
+                + "JOIN pacientes p ON p.id_paciente = c.id_paciente "
+                + "WHERE c.id_consulta NOT IN (SELECT id_consulta FROM recetas) "
+                + "ORDER BY c.id_consulta DESC";
+
+        List<Object[]> lista = new ArrayList<>();
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                lista.add(new Object[]{
+                    rs.getInt("id_consulta"),
+                    rs.getString("paciente"),
+                    rs.getTimestamp("fecha_consulta")
+                });
+            }
+        }
+        return lista;
+    }
+}
+
+
+
+=== ARCHIVO: \pom.xml ===
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>Modelo</groupId>
+    <artifactId>Hospital</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <repositories>
+        <repository>
+            <id>unknown-jars-temp-repo</id>
+            <name>A temporary repository created by NetBeans for libraries and jars it could not identify. Please replace the dependencies in this repository with correct ones and delete this repository.</name>
+            <url>file:${project.basedir}/lib</url>
+        </repository>
+    </repositories>
+    <dependencies>
+    <dependency>
+        <groupId>com.toedter</groupId>
+        <artifactId>jcalendar</artifactId>
+        <version>1.4</version>
+    </dependency>
+    <dependency>
+        <groupId>unknown.binary</groupId>
+        <artifactId>AbsoluteLayout</artifactId>
+        <version>SNAPSHOT</version>
+    </dependency>
+    <!-- NUEVA: driver de PostgreSQL -->
+    <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>42.7.7</version>
+    </dependency>
+</dependencies>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>21</maven.compiler.release>
+        <exec.mainClass>modelo.hospital.Hospital</exec.mainClass>
+    </properties>
+</project>
+
+
+

@@ -54,6 +54,7 @@ public class FrameConsulta extends javax.swing.JFrame {
         jButtonActualizarConsulta = new javax.swing.JButton();
         jButtonEliminarConsulta = new javax.swing.JButton();
         jButtonIrAReceta = new javax.swing.JButton();
+        jButtonRegresarAlMenu = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -62,6 +63,16 @@ public class FrameConsulta extends javax.swing.JFrame {
         jLabel2.setText("Paciente");
 
         jComboBoxPacienteConsulta.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jComboBoxPacienteConsulta.addItemListener(new java.awt.event.ItemListener() {
+            public void itemStateChanged(java.awt.event.ItemEvent evt) {
+                jComboBoxPacienteConsultaItemStateChanged(evt);
+            }
+        });
+        jComboBoxPacienteConsulta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jComboBoxPacienteConsultaActionPerformed(evt);
+            }
+        });
 
         jLabel3.setText("Médico");
 
@@ -90,6 +101,11 @@ public class FrameConsulta extends javax.swing.JFrame {
                 "Title 1", "Title 2", "Title 3", "Title 4"
             }
         ));
+        jTableConsultas.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jTableConsultasMouseClicked(evt);
+            }
+        });
         jScrollPane1.setViewportView(jTableConsultas);
 
         jButtonGuardarConsulta.setBackground(new java.awt.Color(153, 204, 255));
@@ -119,6 +135,13 @@ public class FrameConsulta extends javax.swing.JFrame {
         jButtonIrAReceta.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jButtonIrARecetaActionPerformed(evt);
+            }
+        });
+
+        jButtonRegresarAlMenu.setText("Regresar");
+        jButtonRegresarAlMenu.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonRegresarAlMenuActionPerformed(evt);
             }
         });
 
@@ -162,7 +185,9 @@ public class FrameConsulta extends javax.swing.JFrame {
                             .addComponent(jDateChooserFechaConsulta, javax.swing.GroupLayout.PREFERRED_SIZE, 222, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 417, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addComponent(jButtonGuardarConsulta, javax.swing.GroupLayout.PREFERRED_SIZE, 197, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                    .addComponent(jButtonRegresarAlMenu, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jButtonGuardarConsulta, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 197, Short.MAX_VALUE))
                                 .addGap(18, 18, 18)
                                 .addComponent(jButtonActualizarConsulta, javax.swing.GroupLayout.PREFERRED_SIZE, 197, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addGap(18, 18, 18)
@@ -210,7 +235,9 @@ public class FrameConsulta extends javax.swing.JFrame {
                     .addComponent(jButtonActualizarConsulta)
                     .addComponent(jButtonEliminarConsulta)
                     .addComponent(jButtonIrAReceta))
-                .addContainerGap(49, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jButtonRegresarAlMenu)
+                .addContainerGap(14, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -304,19 +331,37 @@ public class FrameConsulta extends javax.swing.JFrame {
     this.dispose();
     }//GEN-LAST:event_jButtonIrARecetaActionPerformed
 
-    
-    
-    
     private int idConsultaSeleccionada = -1;
-
-    private void jTableConsultasMouseClicked(java.awt.event.MouseEvent evt) {
-    int fila = jTableConsultas.getSelectedRow();
+    private void jTableConsultasMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTableConsultasMouseClicked
+        // TODO add your handling code here:
+        int fila = jTableConsultas.getSelectedRow();
     if (fila == -1) return;
 
     idConsultaSeleccionada = (int) jTableConsultas.getValueAt(fila, 0);
     jTextAreaDiagnostico.setText(jTableConsultas.getValueAt(fila, 4) == null
             ? "" : jTableConsultas.getValueAt(fila, 4).toString());
-}
+    }//GEN-LAST:event_jTableConsultasMouseClicked
+
+    private void jComboBoxPacienteConsultaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jComboBoxPacienteConsultaActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jComboBoxPacienteConsultaActionPerformed
+
+    private void jButtonRegresarAlMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonRegresarAlMenuActionPerformed
+        // TODO add your handling code here:
+        new Menu().setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButtonRegresarAlMenuActionPerformed
+
+    private void jComboBoxPacienteConsultaItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_jComboBoxPacienteConsultaItemStateChanged
+        // TODO add your handling code here:
+        cargarComboInternamientos();
+                
+    }//GEN-LAST:event_jComboBoxPacienteConsultaItemStateChanged
+
+    
+    
+    
+    
 
 
 
@@ -443,6 +488,7 @@ private void limpiarCamposConsulta() {
     private javax.swing.JButton jButtonEliminarConsulta;
     private javax.swing.JButton jButtonGuardarConsulta;
     private javax.swing.JButton jButtonIrAReceta;
+    private javax.swing.JButton jButtonRegresarAlMenu;
     private javax.swing.JComboBox<String> jComboBoxInternamientoConsulta;
     private javax.swing.JComboBox<String> jComboBoxMedicoConsulta;
     private javax.swing.JComboBox<String> jComboBoxPacienteConsulta;
