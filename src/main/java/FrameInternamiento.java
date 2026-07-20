@@ -126,6 +126,7 @@ public class FrameInternamiento extends javax.swing.JFrame {
         });
         jScrollPane1.setViewportView(jTableInternamientos);
 
+        jButtonRegistrarEntrada.setBackground(new java.awt.Color(153, 204, 255));
         jButtonRegistrarEntrada.setText("Registrar Entrada");
         jButtonRegistrarEntrada.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -133,6 +134,7 @@ public class FrameInternamiento extends javax.swing.JFrame {
             }
         });
 
+        jButtonRegistrarSalida.setBackground(new java.awt.Color(153, 204, 255));
         jButtonRegistrarSalida.setText("Registrar Salida");
         jButtonRegistrarSalida.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

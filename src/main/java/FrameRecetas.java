@@ -133,6 +133,7 @@ private List<Object[]> filasPendientes = new ArrayList<>(); // {idMedicamento, n
         ));
         jScrollPane1.setViewportView(jTableMedicamentosReceta);
 
+        jButtonGuardarReceta.setBackground(new java.awt.Color(153, 204, 255));
         jButtonGuardarReceta.setText("Guardar Receta");
         jButtonGuardarReceta.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

@@ -92,6 +92,7 @@ public class FrameConsulta extends javax.swing.JFrame {
         ));
         jScrollPane1.setViewportView(jTableConsultas);
 
+        jButtonGuardarConsulta.setBackground(new java.awt.Color(153, 204, 255));
         jButtonGuardarConsulta.setText("Guardar");
         jButtonGuardarConsulta.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -106,6 +107,7 @@ public class FrameConsulta extends javax.swing.JFrame {
             }
         });
 
+        jButtonEliminarConsulta.setBackground(new java.awt.Color(255, 102, 102));
         jButtonEliminarConsulta.setText("Eliminar");
         jButtonEliminarConsulta.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

@@ -90,13 +90,13 @@ public class FramePacientes extends javax.swing.JFrame {
 
         jLabel10.setText("Altura");
 
-        jComboBoxGenero.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jComboBoxGenero.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Masculino", "Femenino" }));
 
         jLabel11.setText("Tipo de sangre");
 
         jLabel12.setText("Identificador");
 
-        jComboBoxTipoSangre.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jComboBoxTipoSangre.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-" }));
 
         jLabel13.setText("Pacientes Registrados");
 
@@ -118,6 +118,7 @@ public class FramePacientes extends javax.swing.JFrame {
         });
         jScrollPane1.setViewportView(jTablePacientes);
 
+        jButtonGuardarPaciente.setBackground(new java.awt.Color(153, 204, 255));
         jButtonGuardarPaciente.setText("Guardar");
         jButtonGuardarPaciente.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -139,6 +140,7 @@ public class FramePacientes extends javax.swing.JFrame {
             }
         });
 
+        jButtonEliminarPaciente.setBackground(new java.awt.Color(255, 102, 102));
         jButtonEliminarPaciente.setText("Eliminar");
         jButtonEliminarPaciente.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

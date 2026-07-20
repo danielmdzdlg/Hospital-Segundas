@@ -11,13 +11,14 @@
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Properties;
 
 public class Conexion {
 
-    
     private static final String HOST = "localhost";
     private static final String PUERTO = "5432";
-    private static final String BASE_DATOS = "hospital";
+    private static final String BASE_DATOS = "Topicos";
+    private static final String ESQUEMA = "hospital";
     private static final String USUARIO = "postgres";
     private static final String PASSWORD = "1234";
 
@@ -31,7 +32,14 @@ public class Conexion {
             throw new SQLException("No se encontró el driver de PostgreSQL. "
                     + "Revisa que la dependencia esté en el pom.xml.", e);
         }
-        return DriverManager.getConnection(URL, USUARIO, PASSWORD);
+
+        Properties props = new Properties();
+        props.setProperty("user", USUARIO);
+        props.setProperty("password", PASSWORD);
+        // Fuerza el search_path al esquema Hospital en cada conexión,
+        // así no dependemos de que la sesión de PostgreSQL lo recuerde.
+        props.setProperty("currentSchema", ESQUEMA);
+
+        return DriverManager.getConnection(URL, props);
     }
 }
-

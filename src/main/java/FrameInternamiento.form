@@ -352,6 +352,9 @@
         </Container>
         <Component class="javax.swing.JButton" name="jButtonRegistrarEntrada">
           <Properties>
+            <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
+              <Color blue="ff" green="cc" red="99" type="rgb"/>
+            </Property>
             <Property name="text" type="java.lang.String" value="Registrar Entrada"/>
           </Properties>
           <Events>
@@ -360,6 +363,9 @@
         </Component>
         <Component class="javax.swing.JButton" name="jButtonRegistrarSalida">
           <Properties>
+            <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
+              <Color blue="ff" green="cc" red="99" type="rgb"/>
+            </Property>
             <Property name="text" type="java.lang.String" value="Registrar Salida"/>
           </Properties>
           <Events>

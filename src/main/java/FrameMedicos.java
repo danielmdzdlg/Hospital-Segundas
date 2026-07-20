@@ -74,7 +74,7 @@ public class FrameMedicos extends javax.swing.JFrame {
 
         jLabel9.setText("Correo electrónico");
 
-        jComboBoxEspecialidad.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jComboBoxEspecialidad.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Pediatria", "Internista", "Cardiología", "Cirugia", "Odontología", "Epidemiología", "Urgencias" }));
 
         jLabel10.setText("Médicos Registrados");
 
@@ -96,6 +96,7 @@ public class FrameMedicos extends javax.swing.JFrame {
         });
         jScrollPane1.setViewportView(jTableMedicos);
 
+        jButton1.setBackground(new java.awt.Color(153, 204, 255));
         jButton1.setText("Guardar");
         jButton1.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -110,6 +111,7 @@ public class FrameMedicos extends javax.swing.JFrame {
             }
         });
 
+        jButtonEliminarMedico.setBackground(new java.awt.Color(255, 102, 102));
         jButtonEliminarMedico.setText("Eliminar");
         jButtonEliminarMedico.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
