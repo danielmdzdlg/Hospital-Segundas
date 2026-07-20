@@ -7,13 +7,26 @@
  *
  * @author danim
  */
+
+import java.util.List;
+
+
 public class FrameInternamiento extends javax.swing.JFrame {
 
     /**
      * Creates new form FrameInternamiento
      */
+    
+    
+    private int idInternamientoSeleccionado = -1;
+    
     public FrameInternamiento() {
         initComponents();
+        jDateChooserEntrada.setEnabled(false);
+    jDateChooserSalida.setEnabled(false);
+        cargarComboPacientes();
+        cargarComboMedicos();
+        cargarTablaInternamientos();
     }
 
     /**
@@ -40,8 +53,6 @@ public class FrameInternamiento extends javax.swing.JFrame {
         jLabel7 = new javax.swing.JLabel();
         jTextAreaObsEntrada = new javax.swing.JTextField();
         jLabel8 = new javax.swing.JLabel();
-        jLabel9 = new javax.swing.JLabel();
-        jComboBoxPacienteSalida = new javax.swing.JComboBox<>();
         jLabel10 = new javax.swing.JLabel();
         jDateChooserSalida = new com.toedter.calendar.JDateChooser();
         jLabel11 = new javax.swing.JLabel();
@@ -73,7 +84,7 @@ public class FrameInternamiento extends javax.swing.JFrame {
 
         jComboBoxMedicoResponsable.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
-        jComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Hospitalizado", "Urgencias", "Ambulatorio" }));
 
         jLabel6.setText("Motivo de entrada");
 
@@ -87,19 +98,15 @@ public class FrameInternamiento extends javax.swing.JFrame {
 
         jLabel8.setText("Registrar Salida");
 
-        jLabel9.setText("Paciente");
-
-        jComboBoxPacienteSalida.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-
         jLabel10.setText("Fecha de salida");
 
         jLabel11.setText("Motivo de Salida");
 
-        jComboBoxMotivoSalida.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jComboBoxMotivoSalida.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Alta médica", "Traslado", "Voluntaria", "Defuncion" }));
 
         jLabel12.setText("Observaciones");
 
-        jLabel13.setText("jLabel13");
+        jLabel13.setText("Internador");
 
         jTableInternamientos.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -112,17 +119,47 @@ public class FrameInternamiento extends javax.swing.JFrame {
                 "Title 1", "Title 2", "Title 3", "Title 4"
             }
         ));
+        jTableInternamientos.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jTableInternamientosMouseClicked(evt);
+            }
+        });
         jScrollPane1.setViewportView(jTableInternamientos);
 
         jButtonRegistrarEntrada.setText("Registrar Entrada");
+        jButtonRegistrarEntrada.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonRegistrarEntradaActionPerformed(evt);
+            }
+        });
 
         jButtonRegistrarSalida.setText("Registrar Salida");
+        jButtonRegistrarSalida.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonRegistrarSalidaActionPerformed(evt);
+            }
+        });
 
         jButtonLimpiarInternamiento.setText("Limpiar");
+        jButtonLimpiarInternamiento.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonLimpiarInternamientoActionPerformed(evt);
+            }
+        });
 
         jButtonRegresaralMenu.setText("Regresar");
+        jButtonRegresaralMenu.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonRegresaralMenuActionPerformed(evt);
+            }
+        });
 
         jButtonActualizarInternamiento.setText("Actualizar");
+        jButtonActualizarInternamiento.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonActualizarInternamientoActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jComboBoxTipoPacienteLayout = new javax.swing.GroupLayout(jComboBoxTipoPaciente);
         jComboBoxTipoPaciente.setLayout(jComboBoxTipoPacienteLayout);
@@ -132,42 +169,40 @@ public class FrameInternamiento extends javax.swing.JFrame {
                 .addGap(32, 32, 32)
                 .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jComboBoxTipoPacienteLayout.createSequentialGroup()
-                        .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel8, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jTextFieldMotivoEntrada, javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel6, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jComboBoxPacienteInt, javax.swing.GroupLayout.Alignment.LEADING, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jComboBoxTipoPacienteLayout.createSequentialGroup()
-                                .addComponent(jComboBoxPacienteSalida, javax.swing.GroupLayout.PREFERRED_SIZE, 335, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(0, 0, Short.MAX_VALUE))
-                            .addComponent(jLabel9, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addGap(18, 18, 18)
                         .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                .addComponent(jLabel7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(jTextAreaObsEntrada)
-                                .addGroup(jComboBoxTipoPacienteLayout.createSequentialGroup()
-                                    .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(jComboBoxMedicoResponsable, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                    .addGap(18, 18, 18)
-                                    .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addComponent(jLabel4, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(jComboBox3, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                    .addGap(18, 18, 18)
-                                    .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                        .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, 162, Short.MAX_VALUE)
-                                        .addComponent(jDateChooserEntrada, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
                             .addGroup(jComboBoxTipoPacienteLayout.createSequentialGroup()
-                                .addGap(32, 32, 32)
+                                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(jLabel8, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jTextFieldMotivoEntrada, javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jLabel6, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jComboBoxPacienteInt, javax.swing.GroupLayout.Alignment.LEADING, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                .addGap(18, 18, 18))
+                            .addGroup(jComboBoxTipoPacienteLayout.createSequentialGroup()
+                                .addGap(6, 6, 6)
                                 .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(jDateChooserSalida, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(58, 58, 58)
+                                .addGap(42, 42, 42)
                                 .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jComboBoxMotivoSalida, javax.swing.GroupLayout.PREFERRED_SIZE, 264, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, 161, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                    .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, 161, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jComboBoxMotivoSalida, javax.swing.GroupLayout.PREFERRED_SIZE, 264, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                        .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jTextAreaObsEntrada)
+                            .addGroup(jComboBoxTipoPacienteLayout.createSequentialGroup()
+                                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jComboBoxMedicoResponsable, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jLabel4, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jComboBox3, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, 162, Short.MAX_VALUE)
+                                    .addComponent(jDateChooserEntrada, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
                         .addGap(103, 103, 103))
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jComboBoxTipoPacienteLayout.createSequentialGroup()
                         .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
@@ -193,7 +228,7 @@ public class FrameInternamiento extends javax.swing.JFrame {
                                 .addComponent(jButtonActualizarInternamiento, javax.swing.GroupLayout.PREFERRED_SIZE, 139, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addGap(18, 18, 18)
                                 .addComponent(jButtonRegresaralMenu, javax.swing.GroupLayout.PREFERRED_SIZE, 139, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                        .addContainerGap(338, Short.MAX_VALUE))))
         );
         jComboBoxTipoPacienteLayout.setVerticalGroup(
             jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -225,12 +260,10 @@ public class FrameInternamiento extends javax.swing.JFrame {
                 .addComponent(jLabel8)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel9)
                     .addComponent(jLabel10)
                     .addComponent(jLabel11))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jComboBoxTipoPacienteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jComboBoxPacienteSalida, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jDateChooserSalida, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jComboBoxMotivoSalida, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
@@ -271,6 +304,115 @@ public class FrameInternamiento extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_jTextFieldMotivoEntradaActionPerformed
 
+    private void jButtonRegistrarEntradaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonRegistrarEntradaActionPerformed
+        // TODO add your handling code here:
+        ComboItem paciente = (ComboItem) jComboBoxPacienteInt.getSelectedItem();
+    ComboItem medico = (ComboItem) jComboBoxMedicoResponsable.getSelectedItem();
+
+    if (paciente == null || medico == null || jTextFieldMotivoEntrada.getText().trim().isEmpty()) {
+        jLabel13.setText("Selecciona paciente, médico y escribe el motivo de entrada.");
+        return;
+    }
+
+    try {
+        InternamientoDAO.registrarEntrada(
+                paciente.getId(),
+                Integer.parseInt(medico.getId()),
+                jComboBox3.getSelectedItem().toString(), // tipo de paciente
+                jTextFieldMotivoEntrada.getText().trim(),
+                jTextAreaObsEntrada.getText().trim()
+        );
+        jLabel13.setText("Entrada registrada a las "
+                + java.time.LocalTime.now().withNano(0) + ".");
+        jTextFieldMotivoEntrada.setText("");
+        jTextAreaObsEntrada.setText("");
+        cargarTablaInternamientos();
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al registrar entrada: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonRegistrarEntradaActionPerformed
+
+    private void jTableInternamientosMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTableInternamientosMouseClicked
+        // TODO add your handling code here:
+        int fila = jTableInternamientos.getSelectedRow();
+    if (fila == -1) return;
+
+    idInternamientoSeleccionado = (int) jTableInternamientos.getValueAt(fila, 0);
+    String estado = jTableInternamientos.getValueAt(fila, 6).toString();
+
+    if (!"activo".equals(estado)) {
+        jLabel13.setText("Este internamiento ya tiene salida registrada.");
+    } else {
+        jLabel13.setText("Internamiento #" + idInternamientoSeleccionado + " listo para registrar salida.");
+    }
+    }//GEN-LAST:event_jTableInternamientosMouseClicked
+
+    private void jButtonRegistrarSalidaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonRegistrarSalidaActionPerformed
+        // TODO add your handling code here:
+        if (idInternamientoSeleccionado == -1) {
+        jLabel13.setText("Selecciona en la tabla el internamiento al que le vas a dar salida.");
+        return;
+    }
+    if (jComboBoxMotivoSalida.getSelectedItem() == null) {
+        jLabel13.setText("Selecciona el motivo de salida.");
+        return;
+    }
+
+    try {
+        InternamientoDAO.registrarSalida(
+                idInternamientoSeleccionado,
+                jComboBoxMotivoSalida.getSelectedItem().toString(),
+                jTextAreaObsSalida.getText().trim()
+        );
+        jLabel13.setText("Salida registrada a las "
+                + java.time.LocalTime.now().withNano(0) + ".");
+        jTextAreaObsSalida.setText("");
+        idInternamientoSeleccionado = -1;
+        cargarTablaInternamientos();
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al registrar salida: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonRegistrarSalidaActionPerformed
+
+    private void jButtonLimpiarInternamientoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonLimpiarInternamientoActionPerformed
+        // TODO add your handling code here:
+        jTextFieldMotivoEntrada.setText("");
+    jTextAreaObsEntrada.setText("");
+    jTextAreaObsSalida.setText("");
+    idInternamientoSeleccionado = -1;
+    jTableInternamientos.clearSelection();
+    }//GEN-LAST:event_jButtonLimpiarInternamientoActionPerformed
+
+    private void jButtonActualizarInternamientoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonActualizarInternamientoActionPerformed
+        // TODO add your handling code here:
+        if (idInternamientoSeleccionado == -1) {
+        jLabel13.setText("Selecciona en la tabla el internamiento a corregir.");
+        return;
+    }
+    if (jTextFieldMotivoEntrada.getText().trim().isEmpty()) {
+        jLabel13.setText("Escribe el motivo de entrada.");
+        return;
+    }
+
+    try {
+        InternamientoDAO.actualizarDatosEntrada(
+                idInternamientoSeleccionado,
+                jTextFieldMotivoEntrada.getText().trim(),
+                jTextAreaObsEntrada.getText().trim()
+        );
+        jLabel13.setText("Datos de entrada actualizados.");
+        cargarTablaInternamientos();
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al actualizar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonActualizarInternamientoActionPerformed
+
+    private void jButtonRegresaralMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonRegresaralMenuActionPerformed
+        // TODO add your handling code here:
+        new Menu().setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButtonRegresaralMenuActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -306,6 +448,64 @@ public class FrameInternamiento extends javax.swing.JFrame {
         });
     }
 
+    
+    
+    
+    
+    
+    // ===== Cargar combo de pacientes (solo para el registro de entrada) =====
+private void cargarComboPacientes() {
+    try {
+        javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+        for (Object[] fila : PacienteDAO.listarTodos()) {
+            String id = fila[0].toString();
+            String nombre = fila[1] + " " + fila[2]; // nombre + apellido paterno
+            modelo.addElement(new ComboItem(id, id + " — " + nombre));
+        }
+        jComboBoxPacienteInt.setModel(modelo);
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al cargar pacientes: " + e.getMessage());
+    }
+}
+
+// ===== Cargar combo de médicos =====
+private void cargarComboMedicos() {
+    try {
+        javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+        for (Object[] fila : MedicoDAO.listarTodos()) {
+            String id = fila[0].toString();
+            String nombre = fila[1] + " " + fila[2]; // nombre + apellido paterno
+            modelo.addElement(new ComboItem(id, nombre));
+        }
+        jComboBoxMedicoResponsable.setModel(modelo);
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al cargar médicos: " + e.getMessage());
+    }
+}
+
+// ===== Cargar la tabla de internamientos =====
+private void cargarTablaInternamientos() {
+    try {
+        javax.swing.table.DefaultTableModel modelo =
+                (javax.swing.table.DefaultTableModel) jTableInternamientos.getModel();
+        modelo.setRowCount(0);
+        modelo.setColumnIdentifiers(new String[]{
+            "ID", "Paciente", "F. Entrada", "H. Entrada", "F. Salida", "H. Salida", "Estado"
+        });
+
+        for (Object[] fila : InternamientoDAO.listarTodos()) {
+            modelo.addRow(fila);
+        }
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al cargar internamientos: " + e.getMessage());
+    }
+}
+
+
+
+
+
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButtonActualizarInternamiento;
     private javax.swing.JButton jButtonLimpiarInternamiento;
@@ -316,7 +516,6 @@ public class FrameInternamiento extends javax.swing.JFrame {
     private javax.swing.JComboBox<String> jComboBoxMedicoResponsable;
     private javax.swing.JComboBox<String> jComboBoxMotivoSalida;
     private javax.swing.JComboBox<String> jComboBoxPacienteInt;
-    private javax.swing.JComboBox<String> jComboBoxPacienteSalida;
     private javax.swing.JPanel jComboBoxTipoPaciente;
     private com.toedter.calendar.JDateChooser jDateChooserEntrada;
     private com.toedter.calendar.JDateChooser jDateChooserSalida;
@@ -332,7 +531,6 @@ public class FrameInternamiento extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel6;
     private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
-    private javax.swing.JLabel jLabel9;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTable jTableInternamientos;
     private javax.swing.JTextField jTextAreaObsEntrada;

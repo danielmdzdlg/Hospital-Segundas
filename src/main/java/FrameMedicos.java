@@ -14,6 +14,7 @@ public class FrameMedicos extends javax.swing.JFrame {
      */
     public FrameMedicos() {
         initComponents();
+        cargarTablaMedicos();
     }
 
     /**
@@ -73,8 +74,6 @@ public class FrameMedicos extends javax.swing.JFrame {
 
         jLabel9.setText("Correo electrónico");
 
-        jTextField7.setText("jTextFieldCorreo");
-
         jComboBoxEspecialidad.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
         jLabel10.setText("Médicos Registrados");
@@ -90,17 +89,47 @@ public class FrameMedicos extends javax.swing.JFrame {
                 "Title 1", "Title 2", "Title 3", "Title 4"
             }
         ));
+        jTableMedicos.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jTableMedicosMouseClicked(evt);
+            }
+        });
         jScrollPane1.setViewportView(jTableMedicos);
 
         jButton1.setText("Guardar");
+        jButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton1ActionPerformed(evt);
+            }
+        });
 
         jButtonActualizarMedico.setText("Actualizar");
+        jButtonActualizarMedico.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonActualizarMedicoActionPerformed(evt);
+            }
+        });
 
         jButtonEliminarMedico.setText("Eliminar");
+        jButtonEliminarMedico.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonEliminarMedicoActionPerformed(evt);
+            }
+        });
 
         jButtonLimpiarMedico.setText("Limpiar");
+        jButtonLimpiarMedico.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonLimpiarMedicoActionPerformed(evt);
+            }
+        });
 
         jButtonMenuP.setText("Regresar");
+        jButtonMenuP.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonMenuPActionPerformed(evt);
+            }
+        });
 
         jLabel11.setText("info");
 
@@ -217,6 +246,110 @@ public class FrameMedicos extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
+    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+        // TODO add your handling code here:
+        if (jTextFieldNombreMedico.getText().trim().isEmpty()
+            || jTextFieldApPaterno.getText().trim().isEmpty()
+            || jTextFieldCedula.getText().trim().isEmpty()) {
+        jLabel11.setText("Nombre, apellido paterno y cédula son obligatorios.");
+        return;
+    }
+
+    try {
+        MedicoDAO.guardar(
+                jTextFieldNombreMedico.getText().trim(),
+                jTextFieldApPaterno.getText().trim(),
+                jTextFieldApMaterno.getText().trim(),
+                jTextFieldCedula.getText().trim(),
+                jComboBoxEspecialidad.getSelectedItem().toString(),
+                jTextFieldHospital.getText().trim(),
+                jFormattedTextFieldTelefono.getText().trim(),
+                jTextField7.getText().trim()
+        );
+        jLabel11.setText("Médico guardado correctamente.");
+        limpiarCamposMedico();
+        cargarTablaMedicos();
+    } catch (java.sql.SQLException e) {
+        jLabel11.setText("Error al guardar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButton1ActionPerformed
+
+    private void jButtonActualizarMedicoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonActualizarMedicoActionPerformed
+        // TODO add your handling code here:
+        int fila = jTableMedicos.getSelectedRow();
+    if (fila == -1) {
+        jLabel11.setText("Selecciona un médico de la tabla para actualizar.");
+        return;
+    }
+    int idMedico = (int) jTableMedicos.getValueAt(fila, 0);
+
+    try {
+        MedicoDAO.actualizar(idMedico,
+                jTextFieldNombreMedico.getText().trim(),
+                jTextFieldApPaterno.getText().trim(),
+                jTextFieldApMaterno.getText().trim(),
+                jTextFieldCedula.getText().trim(),
+                jComboBoxEspecialidad.getSelectedItem().toString(),
+                jTextFieldHospital.getText().trim(),
+                jFormattedTextFieldTelefono.getText().trim(),
+                jTextField7.getText().trim()
+        );
+        jLabel11.setText("Médico actualizado.");
+        limpiarCamposMedico();
+        cargarTablaMedicos();
+    } catch (java.sql.SQLException e) {
+        jLabel11.setText("Error al actualizar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonActualizarMedicoActionPerformed
+
+    private void jButtonEliminarMedicoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonEliminarMedicoActionPerformed
+        // TODO add your handling code here:
+        int fila = jTableMedicos.getSelectedRow();
+    if (fila == -1) {
+        jLabel11.setText("Selecciona un médico de la tabla para eliminar.");
+        return;
+    }
+    int idMedico = (int) jTableMedicos.getValueAt(fila, 0);
+
+    try {
+        MedicoDAO.eliminar(idMedico);
+        jLabel11.setText("Médico eliminado.");
+        limpiarCamposMedico();
+        cargarTablaMedicos();
+    } catch (java.sql.SQLException e) {
+        jLabel11.setText("Error al eliminar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonEliminarMedicoActionPerformed
+
+    private void jButtonLimpiarMedicoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonLimpiarMedicoActionPerformed
+        // TODO add your handling code here:
+        limpiarCamposMedico();
+    }//GEN-LAST:event_jButtonLimpiarMedicoActionPerformed
+
+    private void jButtonMenuPActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonMenuPActionPerformed
+        // TODO add your handling code here:
+        new Menu().setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButtonMenuPActionPerformed
+
+    private void jTableMedicosMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTableMedicosMouseClicked
+        // TODO add your handling code here:
+            int fila = jTableMedicos.getSelectedRow();
+    if (fila == -1) return;
+
+    javax.swing.table.DefaultTableModel modelo =
+            (javax.swing.table.DefaultTableModel) jTableMedicos.getModel();
+
+    jTextFieldNombreMedico.setText(modelo.getValueAt(fila, 1).toString());
+    jTextFieldApPaterno.setText(modelo.getValueAt(fila, 2).toString());
+    jTextFieldApMaterno.setText(modelo.getValueAt(fila, 3) == null ? "" : modelo.getValueAt(fila, 3).toString());
+    jTextFieldCedula.setText(modelo.getValueAt(fila, 4).toString());
+    jComboBoxEspecialidad.setSelectedItem(modelo.getValueAt(fila, 5) == null ? "" : modelo.getValueAt(fila, 5).toString());
+    jTextFieldHospital.setText(modelo.getValueAt(fila, 6) == null ? "" : modelo.getValueAt(fila, 6).toString());
+    jFormattedTextFieldTelefono.setText(modelo.getValueAt(fila, 7) == null ? "" : modelo.getValueAt(fila, 7).toString());
+    jTextField7.setText(modelo.getValueAt(fila, 8) == null ? "" : modelo.getValueAt(fila, 8).toString());
+    }//GEN-LAST:event_jTableMedicosMouseClicked
+
     /**
      * @param args the command line arguments
      */
@@ -251,6 +384,47 @@ public class FrameMedicos extends javax.swing.JFrame {
             }
         });
     }
+    
+    
+    
+    // ===== Cargar la tabla de médicos =====
+private void cargarTablaMedicos() {
+    try {
+        javax.swing.table.DefaultTableModel modelo =
+                (javax.swing.table.DefaultTableModel) jTableMedicos.getModel();
+        modelo.setRowCount(0); // limpia filas previas
+        modelo.setColumnIdentifiers(new String[]{
+            "ID", "Nombre", "Ap. Paterno", "Ap. Materno",
+            "Cédula", "Especialidad", "Hospital", "Teléfono", "Correo"
+        });
+
+        for (Object[] fila : MedicoDAO.listarTodos()) {
+            modelo.addRow(fila);
+        }
+    } catch (java.sql.SQLException e) {
+        jLabel11.setText("Error al cargar médicos: " + e.getMessage());
+    }
+}
+
+// ===== Limpiar campos =====
+private void limpiarCamposMedico() {
+    jTextFieldNombreMedico.setText("");
+    jTextFieldApPaterno.setText("");
+    jTextFieldApMaterno.setText("");
+    jTextFieldCedula.setText("");
+    jTextFieldHospital.setText("");
+    jFormattedTextFieldTelefono.setText("");
+    jTextField7.setText(""); // correo
+    jComboBoxEspecialidad.setSelectedIndex(0);
+    jTableMedicos.clearSelection();
+}
+
+
+
+
+
+
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton1;

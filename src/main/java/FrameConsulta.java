@@ -7,6 +7,10 @@
  *
  * @author danim
  */
+
+import java.util.List;
+
+
 public class FrameConsulta extends javax.swing.JFrame {
 
     /**
@@ -14,6 +18,10 @@ public class FrameConsulta extends javax.swing.JFrame {
      */
     public FrameConsulta() {
         initComponents();
+    jDateChooserFechaConsulta.setEnabled(false);
+    cargarComboPacientes();
+    cargarComboMedicos();
+    cargarTablaConsultas();
     }
 
     /**
@@ -92,10 +100,25 @@ public class FrameConsulta extends javax.swing.JFrame {
         });
 
         jButtonActualizarConsulta.setText("Actualizar");
+        jButtonActualizarConsulta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonActualizarConsultaActionPerformed(evt);
+            }
+        });
 
         jButtonEliminarConsulta.setText("Eliminar");
+        jButtonEliminarConsulta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonEliminarConsultaActionPerformed(evt);
+            }
+        });
 
         jButtonIrAReceta.setText("Ir a Recetas");
+        jButtonIrAReceta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonIrARecetaActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -156,9 +179,9 @@ public class FrameConsulta extends javax.swing.JFrame {
                     .addComponent(jLabel2)
                     .addComponent(jLabel3))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jComboBoxPacienteConsulta, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jComboBoxMedicoConsulta, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jComboBoxMedicoConsulta, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jComboBoxPacienteConsulta, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel4)
@@ -204,7 +227,96 @@ public class FrameConsulta extends javax.swing.JFrame {
 
     private void jButtonGuardarConsultaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonGuardarConsultaActionPerformed
         // TODO add your handling code here:
+        ComboItem paciente = (ComboItem) jComboBoxPacienteConsulta.getSelectedItem();
+    ComboItem medico = (ComboItem) jComboBoxMedicoConsulta.getSelectedItem();
+    ComboItem internamiento = (ComboItem) jComboBoxInternamientoConsulta.getSelectedItem();
+
+    if (paciente == null || medico == null || jTextAreaDiagnostico.getText().trim().isEmpty()) {
+        jLabel8.setText("Selecciona paciente, médico y escribe el diagnóstico.");
+        return;
+    }
+
+    try {
+        Integer idInternamiento = (internamiento == null || internamiento.getId() == null)
+                ? null : Integer.parseInt(internamiento.getId());
+
+        ConsultaDAO.guardar(
+                paciente.getId(),
+                Integer.parseInt(medico.getId()),
+                idInternamiento,
+                jTextAreaDiagnostico.getText().trim(),
+                jTextAreaObsConsulta.getText().trim()
+        );
+        jLabel8.setText("Consulta guardada correctamente.");
+        limpiarCamposConsulta();
+        cargarTablaConsultas();
+    } catch (java.sql.SQLException e) {
+        jLabel8.setText("Error al guardar: " + e.getMessage());
+    }
     }//GEN-LAST:event_jButtonGuardarConsultaActionPerformed
+
+    private void jButtonActualizarConsultaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonActualizarConsultaActionPerformed
+        // TODO add your handling code here:
+        if (idConsultaSeleccionada == -1) {
+        jLabel8.setText("Selecciona una consulta de la tabla para actualizar.");
+        return;
+    }
+
+    try {
+        ConsultaDAO.actualizar(idConsultaSeleccionada,
+                jTextAreaDiagnostico.getText().trim(),
+                jTextAreaObsConsulta.getText().trim());
+        jLabel8.setText("Consulta actualizada.");
+        limpiarCamposConsulta();
+        cargarTablaConsultas();
+    } catch (java.sql.SQLException e) {
+        jLabel8.setText("Error al actualizar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonActualizarConsultaActionPerformed
+
+    private void jButtonEliminarConsultaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonEliminarConsultaActionPerformed
+        // TODO add your handling code here:
+        if (idConsultaSeleccionada == -1) {
+        jLabel8.setText("Selecciona una consulta de la tabla para eliminar.");
+        return;
+    }
+
+    try {
+        ConsultaDAO.eliminar(idConsultaSeleccionada);
+        jLabel8.setText("Consulta eliminada.");
+        limpiarCamposConsulta();
+        cargarTablaConsultas();
+    } catch (java.sql.SQLException e) {
+        jLabel8.setText("Error al eliminar (revisa que no tenga una receta asociada): " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonEliminarConsultaActionPerformed
+
+    private void jButtonIrARecetaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonIrARecetaActionPerformed
+        // TODO add your handling code here:
+        if (idConsultaSeleccionada == -1) {
+        jLabel8.setText("Selecciona una consulta de la tabla para emitirle receta.");
+        return;
+    }
+    FrameRecetas frame = new FrameRecetas(idConsultaSeleccionada);
+    frame.setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButtonIrARecetaActionPerformed
+
+    
+    
+    
+    private int idConsultaSeleccionada = -1;
+
+    private void jTableConsultasMouseClicked(java.awt.event.MouseEvent evt) {
+    int fila = jTableConsultas.getSelectedRow();
+    if (fila == -1) return;
+
+    idConsultaSeleccionada = (int) jTableConsultas.getValueAt(fila, 0);
+    jTextAreaDiagnostico.setText(jTableConsultas.getValueAt(fila, 4) == null
+            ? "" : jTableConsultas.getValueAt(fila, 4).toString());
+}
+
+
 
     /**
      * @param args the command line arguments
@@ -241,6 +353,89 @@ public class FrameConsulta extends javax.swing.JFrame {
         });
     }
 
+    
+    
+    
+    
+    private void cargarComboPacientes() {
+    try {
+        javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+        for (Object[] fila : PacienteDAO.listarTodos()) {
+            String id = fila[0].toString();
+            String nombre = fila[1] + " " + fila[2];
+            modelo.addElement(new ComboItem(id, id + " — " + nombre));
+        }
+        jComboBoxPacienteConsulta.setModel(modelo);
+        cargarComboInternamientos(); // refresca internamientos del primer paciente
+    } catch (java.sql.SQLException e) {
+        jLabel8.setText("Error al cargar pacientes: " + e.getMessage());
+    }
+}
+
+// ===== Cargar combo de médicos =====
+private void cargarComboMedicos() {
+    try {
+        javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+        for (Object[] fila : MedicoDAO.listarTodos()) {
+            String id = fila[0].toString();
+            String nombre = fila[1] + " " + fila[2];
+            modelo.addElement(new ComboItem(id, nombre));
+        }
+        jComboBoxMedicoConsulta.setModel(modelo);
+    } catch (java.sql.SQLException e) {
+        jLabel8.setText("Error al cargar médicos: " + e.getMessage());
+    }
+}
+
+// ===== Cargar combo de internamientos ACTIVOS del paciente seleccionado =====
+private void cargarComboInternamientos() {
+    ComboItem paciente = (ComboItem) jComboBoxPacienteConsulta.getSelectedItem();
+    javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+    modelo.addElement(new ComboItem(null, "— Ninguno (consulta externa) —"));
+
+    if (paciente != null) {
+        try {
+            for (Object[] fila : ConsultaDAO.listarInternamientosActivos(paciente.getId())) {
+                String id = fila[0].toString();
+                modelo.addElement(new ComboItem(id, "Internamiento #" + id + " (" + fila[1] + ")"));
+            }
+        } catch (java.sql.SQLException e) {
+            jLabel8.setText("Error al cargar internamientos: " + e.getMessage());
+        }
+    }
+    jComboBoxInternamientoConsulta.setModel(modelo);
+}
+
+// ===== Cargar la tabla de consultas =====
+private void cargarTablaConsultas() {
+    try {
+        javax.swing.table.DefaultTableModel modelo =
+                (javax.swing.table.DefaultTableModel) jTableConsultas.getModel();
+        modelo.setRowCount(0);
+        modelo.setColumnIdentifiers(new String[]{
+            "ID", "Paciente", "Médico", "Fecha", "Diagnóstico"
+        });
+
+        for (Object[] fila : ConsultaDAO.listarTodos()) {
+            modelo.addRow(fila);
+        }
+    } catch (java.sql.SQLException e) {
+        jLabel8.setText("Error al cargar consultas: " + e.getMessage());
+    }
+}
+
+// ===== Limpiar campos =====
+private void limpiarCamposConsulta() {
+    jTextAreaDiagnostico.setText("");
+    jTextAreaObsConsulta.setText("");
+    idConsultaSeleccionada = -1;
+    jTableConsultas.clearSelection();
+}
+    
+    
+    
+    
+    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButtonActualizarConsulta;
     private javax.swing.JButton jButtonEliminarConsulta;

@@ -7,6 +7,8 @@
  *
  * @author danim
  */
+
+import java.util.List;
 public class FramePacientes extends javax.swing.JFrame {
 
     /**
@@ -14,6 +16,7 @@ public class FramePacientes extends javax.swing.JFrame {
      */
     public FramePacientes() {
         initComponents();
+        cargarTablaPacientes();
     }
 
     /**
@@ -108,6 +111,11 @@ public class FramePacientes extends javax.swing.JFrame {
                 "Title 1", "Title 2", "Title 3", "Title 4"
             }
         ));
+        jTablePacientes.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jTablePacientesMouseClicked(evt);
+            }
+        });
         jScrollPane1.setViewportView(jTablePacientes);
 
         jButtonGuardarPaciente.setText("Guardar");
@@ -118,10 +126,25 @@ public class FramePacientes extends javax.swing.JFrame {
         });
 
         jButtonActualizarPaciente.setText("Actualizar");
+        jButtonActualizarPaciente.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonActualizarPacienteActionPerformed(evt);
+            }
+        });
 
         jButtonBuscarPaciente.setText("Buscar");
+        jButtonBuscarPaciente.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonBuscarPacienteActionPerformed(evt);
+            }
+        });
 
         jButtonEliminarPaciente.setText("Eliminar");
+        jButtonEliminarPaciente.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonEliminarPacienteActionPerformed(evt);
+            }
+        });
 
         jButtonLimpiarPaciente.setText("Limpiar");
         jButtonLimpiarPaciente.addActionListener(new java.awt.event.ActionListener() {
@@ -131,6 +154,11 @@ public class FramePacientes extends javax.swing.JFrame {
         });
 
         jButtonRegresoMenu.setText("Regresar");
+        jButtonRegresoMenu.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonRegresoMenuActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -274,12 +302,165 @@ public class FramePacientes extends javax.swing.JFrame {
     }//GEN-LAST:event_jTextFieldNombrePacienteActionPerformed
 
     private void jButtonGuardarPacienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonGuardarPacienteActionPerformed
-        // TODO add your handling code here:
+ String id = jTextFieldIdPaciente.getText().trim();
+
+    if (id.isEmpty() || jTextFieldNombrePaciente.getText().trim().isEmpty()
+            || jTextFieldApPaternoPac.getText().trim().isEmpty()
+            || jDateChooserNacimiento.getDate() == null) {
+        jLabel13.setText("Expediente, nombre, apellido paterno y fecha de nacimiento son obligatorios.");
+        return;
+    }
+
+    try {
+        if (PacienteDAO.existe(id)) {
+            jLabel13.setText("Ya existe un paciente con el expediente " + id + ".");
+            return;
+        }
+
+        double peso = jTextFieldPeso.getText().trim().isEmpty() ? 0
+                : Double.parseDouble(jTextFieldPeso.getText().trim());
+        double altura = jTextFieldAltura.getText().trim().isEmpty() ? 0
+                : Double.parseDouble(jTextFieldAltura.getText().trim());
+        java.sql.Date fechaNac = new java.sql.Date(jDateChooserNacimiento.getDate().getTime());
+
+        PacienteDAO.guardar(id,
+                jTextFieldNombrePaciente.getText().trim(),
+                jTextFieldApPaternoPac.getText().trim(),
+                jTextFieldApMaternoPac.getText().trim(),
+                jComboBoxGenero.getSelectedItem().toString(),
+                fechaNac, peso, altura,
+                jComboBoxTipoSangre.getSelectedItem().toString(),
+                jFormattedTextFieldTelPac.getText().trim(),
+                jTextFieldCorreoPac.getText().trim()
+        );
+        jLabel13.setText("Paciente guardado correctamente.");
+        limpiarCamposPaciente();
+        cargarTablaPacientes();
+    } catch (NumberFormatException e) {
+        jLabel13.setText("Peso y altura deben ser números (ej. 68.50).");
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al guardar: " + e.getMessage());
+    }        // TODO add your handling code here:
     }//GEN-LAST:event_jButtonGuardarPacienteActionPerformed
 
     private void jButtonLimpiarPacienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonLimpiarPacienteActionPerformed
         // TODO add your handling code here:
+            limpiarCamposPaciente();
+
     }//GEN-LAST:event_jButtonLimpiarPacienteActionPerformed
+
+    private void jButtonActualizarPacienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonActualizarPacienteActionPerformed
+
+        // TODO add your handling code here:
+        String id = jTextFieldIdPaciente.getText().trim();
+    if (id.isEmpty()) {
+        jLabel13.setText("Selecciona un paciente de la tabla para actualizar.");
+        return;
+    }
+
+    try {
+        double peso = jTextFieldPeso.getText().trim().isEmpty() ? 0
+                : Double.parseDouble(jTextFieldPeso.getText().trim());
+        double altura = jTextFieldAltura.getText().trim().isEmpty() ? 0
+                : Double.parseDouble(jTextFieldAltura.getText().trim());
+        java.sql.Date fechaNac = new java.sql.Date(jDateChooserNacimiento.getDate().getTime());
+
+        PacienteDAO.actualizar(id,
+                jTextFieldNombrePaciente.getText().trim(),
+                jTextFieldApPaternoPac.getText().trim(),
+                jTextFieldApMaternoPac.getText().trim(),
+                jComboBoxGenero.getSelectedItem().toString(),
+                fechaNac, peso, altura,
+                jComboBoxTipoSangre.getSelectedItem().toString(),
+                jFormattedTextFieldTelPac.getText().trim(),
+                jTextFieldCorreoPac.getText().trim()
+        );
+        jLabel13.setText("Paciente actualizado.");
+        limpiarCamposPaciente();
+        cargarTablaPacientes();
+    } catch (NumberFormatException e) {
+        jLabel13.setText("Peso y altura deben ser números.");
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al actualizar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonActualizarPacienteActionPerformed
+
+    private void jTablePacientesMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTablePacientesMouseClicked
+        // TODO add your handling code here:
+        int fila = jTablePacientes.getSelectedRow();
+    if (fila == -1) return;
+
+    javax.swing.table.DefaultTableModel modelo =
+            (javax.swing.table.DefaultTableModel) jTablePacientes.getModel();
+
+    jTextFieldIdPaciente.setText(modelo.getValueAt(fila, 0).toString());
+    jTextFieldIdPaciente.setEnabled(false); // el expediente no se edita una vez creado
+    jTextFieldNombrePaciente.setText(modelo.getValueAt(fila, 1).toString());
+    jTextFieldApPaternoPac.setText(modelo.getValueAt(fila, 2).toString());
+    jTextFieldApMaternoPac.setText(modelo.getValueAt(fila, 3) == null ? "" : modelo.getValueAt(fila, 3).toString());
+    jComboBoxGenero.setSelectedItem(modelo.getValueAt(fila, 4) == null ? "" : modelo.getValueAt(fila, 4).toString());
+
+    Object fechaObj = modelo.getValueAt(fila, 5);
+    if (fechaObj != null) {
+        jDateChooserNacimiento.setDate((java.util.Date) fechaObj);
+    }
+
+    jTextFieldPeso.setText(modelo.getValueAt(fila, 6).toString());
+    jTextFieldAltura.setText(modelo.getValueAt(fila, 7).toString());
+    jComboBoxTipoSangre.setSelectedItem(modelo.getValueAt(fila, 8) == null ? "" : modelo.getValueAt(fila, 8).toString());
+    jFormattedTextFieldTelPac.setText(modelo.getValueAt(fila, 9) == null ? "" : modelo.getValueAt(fila, 9).toString());
+    jTextFieldCorreoPac.setText(modelo.getValueAt(fila, 10) == null ? "" : modelo.getValueAt(fila, 10).toString());
+    }//GEN-LAST:event_jTablePacientesMouseClicked
+
+    private void jButtonEliminarPacienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonEliminarPacienteActionPerformed
+        // TODO add your handling code here:
+          String id = jTextFieldIdPaciente.getText().trim();
+    if (id.isEmpty()) {
+        jLabel13.setText("Selecciona un paciente de la tabla para eliminar.");
+        return;
+    }
+
+    try {
+        PacienteDAO.eliminar(id);
+        jLabel13.setText("Paciente eliminado.");
+        limpiarCamposPaciente();
+        cargarTablaPacientes();
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al eliminar (revisa que no tenga consultas o internamientos ligados): " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonEliminarPacienteActionPerformed
+
+    private void jButtonBuscarPacienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonBuscarPacienteActionPerformed
+        // TODO add your handling code here:
+        String texto = jTextFieldIdPaciente.getText().trim();
+    if (texto.isEmpty()) {
+        texto = jTextFieldNombrePaciente.getText().trim();
+    }
+    if (texto.isEmpty()) {
+        jLabel13.setText("Escribe un expediente o nombre para buscar.");
+        return;
+    }
+
+    try {
+        javax.swing.table.DefaultTableModel modelo =
+                (javax.swing.table.DefaultTableModel) jTablePacientes.getModel();
+        modelo.setRowCount(0);
+
+        List<Object[]> resultados = PacienteDAO.buscar(texto);
+        for (Object[] fila : resultados) {
+            modelo.addRow(fila);
+        }
+        jLabel13.setText(resultados.size() + " resultado(s) encontrado(s).");
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al buscar: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonBuscarPacienteActionPerformed
+
+    private void jButtonRegresoMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonRegresoMenuActionPerformed
+        // TODO add your handling code here:
+        new Menu().setVisible(true);
+    this.dispose();
+    }//GEN-LAST:event_jButtonRegresoMenuActionPerformed
 
     /**
      * @param args the command line arguments
@@ -315,6 +496,45 @@ public class FramePacientes extends javax.swing.JFrame {
             }
         });
     }
+    
+    
+    
+    
+    // ===== Cargar la tabla de pacientes =====
+private void cargarTablaPacientes() {
+    try {
+        javax.swing.table.DefaultTableModel modelo =
+                (javax.swing.table.DefaultTableModel) jTablePacientes.getModel();
+        modelo.setRowCount(0);
+        modelo.setColumnIdentifiers(new String[]{
+            "Expediente", "Nombre", "Ap. Paterno", "Ap. Materno", "Género",
+            "F. Nacimiento", "Peso", "Altura", "Tipo Sangre", "Teléfono", "Correo"
+        });
+
+        for (Object[] fila : PacienteDAO.listarTodos()) {
+            modelo.addRow(fila);
+        }
+    } catch (java.sql.SQLException e) {
+        jLabel13.setText("Error al cargar pacientes: " + e.getMessage());
+    }
+}
+
+// ===== Limpiar campos =====
+private void limpiarCamposPaciente() {
+    jTextFieldIdPaciente.setText("");
+    jTextFieldIdPaciente.setEnabled(true); // por si estaba bloqueado tras seleccionar uno
+    jTextFieldNombrePaciente.setText("");
+    jTextFieldApPaternoPac.setText("");
+    jTextFieldApMaternoPac.setText("");
+    jTextFieldPeso.setText("");
+    jTextFieldAltura.setText("");
+    jFormattedTextFieldTelPac.setText("");
+    jTextFieldCorreoPac.setText("");
+    jComboBoxGenero.setSelectedIndex(0);
+    jComboBoxTipoSangre.setSelectedIndex(0);
+    jDateChooserNacimiento.setDate(null);
+    jTablePacientes.clearSelection();
+}
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButtonActualizarPaciente;

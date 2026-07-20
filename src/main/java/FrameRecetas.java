@@ -7,13 +7,31 @@
  *
  * @author danim
  */
+import java.util.ArrayList;
+import java.util.List;
+
 public class FrameRecetas extends javax.swing.JFrame {
+    private int idConsultaActual;
+private List<Object[]> filasPendientes = new ArrayList<>(); // {idMedicamento, nombreMostrado, dosis, frecuencia, duracion}
 
     /**
      * Creates new form FrameRecetas
      */
     public FrameRecetas() {
         initComponents();
+        cargarComboMedicamento();
+        inicializarTablaMedicamentos();
+    }
+    public FrameRecetas(int idConsulta) {
+    initComponents();
+    this.idConsultaActual = idConsulta;
+    cargarComboMedicamento();
+    // Deja fijo el combo de consulta mostrando solo esta consulta (no dejes cambiarlo)
+    javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+    modelo.addElement(new ComboItem(String.valueOf(idConsulta), "Consulta #" + idConsulta));
+    jComboBoxConsultaReceta.setModel(modelo);
+    jComboBoxConsultaReceta.setEnabled(false);
+    inicializarTablaMedicamentos();
     }
 
     /**
@@ -48,6 +66,7 @@ public class FrameRecetas extends javax.swing.JFrame {
         jButtonImprimirReceta = new javax.swing.JButton();
         jButtonLimpiarReceta = new javax.swing.JButton();
         jButtonRegresarAlMenu = new javax.swing.JButton();
+        jLabelStatusReceta = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -95,6 +114,11 @@ public class FrameRecetas extends javax.swing.JFrame {
         });
 
         jButton2.setText("Agregar Medicamento");
+        jButton2.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton2ActionPerformed(evt);
+            }
+        });
 
         jTableMedicamentosReceta.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -110,6 +134,11 @@ public class FrameRecetas extends javax.swing.JFrame {
         jScrollPane1.setViewportView(jTableMedicamentosReceta);
 
         jButtonGuardarReceta.setText("Guardar Receta");
+        jButtonGuardarReceta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonGuardarRecetaActionPerformed(evt);
+            }
+        });
 
         jButtonImprimirReceta.setText("Imprimir");
         jButtonImprimirReceta.addActionListener(new java.awt.event.ActionListener() {
@@ -119,8 +148,15 @@ public class FrameRecetas extends javax.swing.JFrame {
         });
 
         jButtonLimpiarReceta.setText("Limpiar");
+        jButtonLimpiarReceta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonLimpiarRecetaActionPerformed(evt);
+            }
+        });
 
         jButtonRegresarAlMenu.setText("Regresar");
+
+        jLabelStatusReceta.setText("jLabel9");
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -128,38 +164,37 @@ public class FrameRecetas extends javax.swing.JFrame {
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addGap(33, 33, 33)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 881, Short.MAX_VALUE)
-                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 261, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGroup(jPanel1Layout.createSequentialGroup()
-                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                                .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 160, Short.MAX_VALUE)
-                                .addComponent(jComboBoxConsultaReceta, javax.swing.GroupLayout.Alignment.LEADING, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                            .addGap(18, 18, 18)
-                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, 703, Short.MAX_VALUE)
-                                .addComponent(jTextAreaIndicacionesGenerales)))
-                        .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addGroup(jPanel1Layout.createSequentialGroup()
-                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                                .addComponent(jComboBoxMedicamento, javax.swing.GroupLayout.Alignment.LEADING, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(jLabel5, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 296, Short.MAX_VALUE))
-                            .addGap(18, 18, 18)
-                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                .addComponent(jLabel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(jTextFieldDosis, javax.swing.GroupLayout.DEFAULT_SIZE, 126, Short.MAX_VALUE))
-                            .addGap(18, 18, 18)
-                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                .addComponent(jLabel7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(jTextFieldFrecuencia, javax.swing.GroupLayout.DEFAULT_SIZE, 126, Short.MAX_VALUE))
-                            .addGap(18, 18, 18)
-                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                .addComponent(jLabel8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(jTextFieldDuracion, javax.swing.GroupLayout.DEFAULT_SIZE, 152, Short.MAX_VALUE))
-                            .addGap(18, 18, 18)
-                            .addComponent(jButtonQuitarMedicamento, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 296, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 881, Short.MAX_VALUE)
+                    .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 261, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 160, Short.MAX_VALUE)
+                            .addComponent(jComboBoxConsultaReceta, javax.swing.GroupLayout.Alignment.LEADING, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addGap(18, 18, 18)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, 703, Short.MAX_VALUE)
+                            .addComponent(jTextAreaIndicacionesGenerales)))
+                    .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addComponent(jComboBoxMedicamento, javax.swing.GroupLayout.Alignment.LEADING, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jLabel5, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 296, Short.MAX_VALUE))
+                        .addGap(18, 18, 18)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jTextFieldDosis, javax.swing.GroupLayout.DEFAULT_SIZE, 126, Short.MAX_VALUE))
+                        .addGap(18, 18, 18)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jTextFieldFrecuencia, javax.swing.GroupLayout.DEFAULT_SIZE, 126, Short.MAX_VALUE))
+                        .addGap(18, 18, 18)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jTextFieldDuracion, javax.swing.GroupLayout.DEFAULT_SIZE, 152, Short.MAX_VALUE))
+                        .addGap(18, 18, 18)
+                        .addComponent(jButtonQuitarMedicamento, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 296, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addComponent(jButtonGuardarReceta, javax.swing.GroupLayout.PREFERRED_SIZE, 148, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(18, 18, 18)
@@ -167,7 +202,8 @@ public class FrameRecetas extends javax.swing.JFrame {
                         .addGap(18, 18, 18)
                         .addComponent(jButtonLimpiarReceta, javax.swing.GroupLayout.PREFERRED_SIZE, 148, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(18, 18, 18)
-                        .addComponent(jButtonRegresarAlMenu, javax.swing.GroupLayout.PREFERRED_SIZE, 148, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(jButtonRegresarAlMenu, javax.swing.GroupLayout.PREFERRED_SIZE, 148, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabelStatusReceta, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap(56, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
@@ -212,7 +248,9 @@ public class FrameRecetas extends javax.swing.JFrame {
                     .addComponent(jButtonImprimirReceta)
                     .addComponent(jButtonLimpiarReceta)
                     .addComponent(jButtonRegresarAlMenu))
-                .addGap(100, 100, 100))
+                .addGap(18, 18, 18)
+                .addComponent(jLabelStatusReceta)
+                .addGap(66, 66, 66))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -233,6 +271,13 @@ public class FrameRecetas extends javax.swing.JFrame {
 
     private void jButtonQuitarMedicamentoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonQuitarMedicamentoActionPerformed
         // TODO add your handling code here:
+        int fila = jTableMedicamentosReceta.getSelectedRow();
+    if (fila == -1) return;
+
+    filasPendientes.remove(fila);
+    javax.swing.table.DefaultTableModel modelo =
+            (javax.swing.table.DefaultTableModel) jTableMedicamentosReceta.getModel();
+    modelo.removeRow(fila);
     }//GEN-LAST:event_jButtonQuitarMedicamentoActionPerformed
 
     private void jTextFieldDuracionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldDuracionActionPerformed
@@ -246,6 +291,73 @@ public class FrameRecetas extends javax.swing.JFrame {
     private void jTextFieldDosisActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldDosisActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_jTextFieldDosisActionPerformed
+
+    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+        // TODO add your handling code here:
+        ComboItem medicamento = (ComboItem) jComboBoxMedicamento.getSelectedItem();
+
+    if (medicamento == null || jTextFieldDosis.getText().trim().isEmpty()
+            || jTextFieldFrecuencia.getText().trim().isEmpty()
+            || jTextFieldDuracion.getText().trim().isEmpty()) {
+        return; // si tienes un jLabel de status, avisa aquí
+    }
+
+    filasPendientes.add(new Object[]{
+        Integer.parseInt(medicamento.getId()),
+        medicamento.toString(),
+        jTextFieldDosis.getText().trim(),
+        jTextFieldFrecuencia.getText().trim(),
+        jTextFieldDuracion.getText().trim()
+    });
+
+    javax.swing.table.DefaultTableModel modelo =
+            (javax.swing.table.DefaultTableModel) jTableMedicamentosReceta.getModel();
+    modelo.addRow(new Object[]{
+        medicamento.toString(),
+        jTextFieldDosis.getText().trim(),
+        jTextFieldFrecuencia.getText().trim(),
+        jTextFieldDuracion.getText().trim()
+    });
+
+    jTextFieldDosis.setText("");
+    jTextFieldFrecuencia.setText("");
+    jTextFieldDuracion.setText("");
+    }//GEN-LAST:event_jButton2ActionPerformed
+
+    private void jButtonGuardarRecetaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonGuardarRecetaActionPerformed
+        // TODO add your handling code here:
+        if (idConsultaActual == 0) {
+        return; // no debería pasar si siempre abres este frame desde "Ir a Receta"
+    }
+
+    try {
+        // filasPendientes trae {idMedicamento, nombreMostrado, dosis, frecuencia, duracion}
+        // RecetaDAO solo necesita {idMedicamento, dosis, frecuencia, duracion}
+        List<Object[]> filasParaGuardar = new ArrayList<>();
+        for (Object[] fila : filasPendientes) {
+            filasParaGuardar.add(new Object[]{fila[0], fila[2], fila[3], fila[4]});
+        }
+
+        RecetaDAO.guardarRecetaCompleta(idConsultaActual,
+                jTextAreaIndicacionesGenerales.getText().trim(),
+                filasParaGuardar);
+
+        javax.swing.JOptionPane.showMessageDialog(this, "Receta guardada correctamente.");
+        jLabelStatusReceta.setText("Receta guardada correctamente.");
+    } catch (java.sql.SQLException e) {
+        jLabelStatusReceta.setText("Error al guardar la receta: " + e.getMessage());
+    }
+    }//GEN-LAST:event_jButtonGuardarRecetaActionPerformed
+
+    private void jButtonLimpiarRecetaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonLimpiarRecetaActionPerformed
+        // TODO add your handling code here:
+        filasPendientes.clear();
+    inicializarTablaMedicamentos();
+    jTextAreaIndicacionesGenerales.setText("");
+    jTextFieldDosis.setText("");
+    jTextFieldFrecuencia.setText("");
+    jTextFieldDuracion.setText("");
+    }//GEN-LAST:event_jButtonLimpiarRecetaActionPerformed
 
     /**
      * @param args the command line arguments
@@ -281,6 +393,33 @@ public class FrameRecetas extends javax.swing.JFrame {
             }
         });
     }
+    
+    
+    private void cargarComboMedicamento() {
+    try {
+        javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+        for (Object[] fila : MedicamentoDAO.listarTodos()) {
+            String id = fila[0].toString();
+            String nombre = fila[1] + " (" + fila[2] + " " + fila[3] + ")";
+            modelo.addElement(new ComboItem(id, nombre));
+        }
+        jComboBoxMedicamento.setModel(modelo);
+    } catch (java.sql.SQLException e) {
+        // si tienes un jLabel de status en este frame, muéstralo ahí
+        jLabelStatusReceta.setText("Error al cargar medicamentos: " + e.getMessage());
+    }
+}
+
+// ===== Preparar la tabla visual de medicamentos de la receta =====
+private void inicializarTablaMedicamentos() {
+    javax.swing.table.DefaultTableModel modelo =
+            (javax.swing.table.DefaultTableModel) jTableMedicamentosReceta.getModel();
+    modelo.setRowCount(0);
+    modelo.setColumnIdentifiers(new String[]{"Medicamento", "Dosis", "Frecuencia", "Duración"});
+}
+
+
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton2;
@@ -299,6 +438,7 @@ public class FrameRecetas extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel6;
     private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
+    private javax.swing.JLabel jLabelStatusReceta;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTable jTableMedicamentosReceta;

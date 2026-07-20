@@ -43,47 +43,45 @@
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" alignment="0" attributes="0">
                   <EmptySpace min="-2" pref="33" max="-2" attributes="0"/>
-                  <Group type="103" groupAlignment="0" attributes="0">
-                      <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                          <Component id="jScrollPane1" pref="881" max="32767" attributes="0"/>
-                          <Component id="jLabel1" min="-2" pref="261" max="-2" attributes="0"/>
-                          <Group type="102" alignment="0" attributes="0">
-                              <Group type="103" groupAlignment="1" max="-2" attributes="0">
-                                  <Component id="jLabel2" alignment="0" pref="160" max="32767" attributes="0"/>
-                                  <Component id="jComboBoxConsultaReceta" alignment="0" max="32767" attributes="0"/>
-                              </Group>
-                              <EmptySpace type="separate" max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                                  <Component id="jLabel3" pref="703" max="32767" attributes="0"/>
-                                  <Component id="jTextAreaIndicacionesGenerales" max="32767" attributes="0"/>
-                              </Group>
+                  <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                      <Component id="jScrollPane1" pref="881" max="32767" attributes="0"/>
+                      <Component id="jLabel1" min="-2" pref="261" max="-2" attributes="0"/>
+                      <Group type="102" alignment="0" attributes="0">
+                          <Group type="103" groupAlignment="1" max="-2" attributes="0">
+                              <Component id="jLabel2" alignment="0" pref="160" max="32767" attributes="0"/>
+                              <Component id="jComboBoxConsultaReceta" alignment="0" max="32767" attributes="0"/>
                           </Group>
-                          <Component id="jLabel4" alignment="0" max="32767" attributes="0"/>
-                          <Group type="102" alignment="0" attributes="0">
-                              <Group type="103" groupAlignment="1" max="-2" attributes="0">
-                                  <Component id="jComboBoxMedicamento" alignment="0" max="32767" attributes="0"/>
-                                  <Component id="jLabel5" alignment="0" pref="296" max="32767" attributes="0"/>
-                              </Group>
-                              <EmptySpace type="separate" max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                                  <Component id="jLabel6" max="32767" attributes="0"/>
-                                  <Component id="jTextFieldDosis" pref="126" max="32767" attributes="0"/>
-                              </Group>
-                              <EmptySpace type="separate" max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                                  <Component id="jLabel7" max="32767" attributes="0"/>
-                                  <Component id="jTextFieldFrecuencia" pref="126" max="32767" attributes="0"/>
-                              </Group>
-                              <EmptySpace type="separate" max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                                  <Component id="jLabel8" max="32767" attributes="0"/>
-                                  <Component id="jTextFieldDuracion" pref="152" max="32767" attributes="0"/>
-                              </Group>
-                              <EmptySpace type="separate" max="-2" attributes="0"/>
-                              <Component id="jButtonQuitarMedicamento" max="32767" attributes="0"/>
+                          <EmptySpace type="separate" max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                              <Component id="jLabel3" pref="703" max="32767" attributes="0"/>
+                              <Component id="jTextAreaIndicacionesGenerales" max="32767" attributes="0"/>
                           </Group>
-                          <Component id="jButton2" min="-2" pref="296" max="-2" attributes="0"/>
                       </Group>
+                      <Component id="jLabel4" alignment="0" max="32767" attributes="0"/>
+                      <Group type="102" alignment="0" attributes="0">
+                          <Group type="103" groupAlignment="1" max="-2" attributes="0">
+                              <Component id="jComboBoxMedicamento" alignment="0" max="32767" attributes="0"/>
+                              <Component id="jLabel5" alignment="0" pref="296" max="32767" attributes="0"/>
+                          </Group>
+                          <EmptySpace type="separate" max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                              <Component id="jLabel6" max="32767" attributes="0"/>
+                              <Component id="jTextFieldDosis" pref="126" max="32767" attributes="0"/>
+                          </Group>
+                          <EmptySpace type="separate" max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                              <Component id="jLabel7" max="32767" attributes="0"/>
+                              <Component id="jTextFieldFrecuencia" pref="126" max="32767" attributes="0"/>
+                          </Group>
+                          <EmptySpace type="separate" max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                              <Component id="jLabel8" max="32767" attributes="0"/>
+                              <Component id="jTextFieldDuracion" pref="152" max="32767" attributes="0"/>
+                          </Group>
+                          <EmptySpace type="separate" max="-2" attributes="0"/>
+                          <Component id="jButtonQuitarMedicamento" max="32767" attributes="0"/>
+                      </Group>
+                      <Component id="jButton2" min="-2" pref="296" max="-2" attributes="0"/>
                       <Group type="102" attributes="0">
                           <Component id="jButtonGuardarReceta" min="-2" pref="148" max="-2" attributes="0"/>
                           <EmptySpace type="separate" max="-2" attributes="0"/>
@@ -93,6 +91,7 @@
                           <EmptySpace type="separate" max="-2" attributes="0"/>
                           <Component id="jButtonRegresarAlMenu" min="-2" pref="148" max="-2" attributes="0"/>
                       </Group>
+                      <Component id="jLabelStatusReceta" alignment="0" max="32767" attributes="0"/>
                   </Group>
                   <EmptySpace pref="56" max="32767" attributes="0"/>
               </Group>
@@ -148,7 +147,9 @@
                       <Component id="jButtonLimpiarReceta" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="jButtonRegresarAlMenu" alignment="3" min="-2" max="-2" attributes="0"/>
                   </Group>
-                  <EmptySpace min="-2" pref="100" max="-2" attributes="0"/>
+                  <EmptySpace type="separate" max="-2" attributes="0"/>
+                  <Component id="jLabelStatusReceta" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace min="-2" pref="66" max="-2" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -259,6 +260,9 @@
           <Properties>
             <Property name="text" type="java.lang.String" value="Agregar Medicamento"/>
           </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jButton2ActionPerformed"/>
+          </Events>
         </Component>
         <Container class="javax.swing.JScrollPane" name="jScrollPane1">
           <AuxValues>
@@ -285,6 +289,9 @@
           <Properties>
             <Property name="text" type="java.lang.String" value="Guardar Receta"/>
           </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jButtonGuardarRecetaActionPerformed"/>
+          </Events>
         </Component>
         <Component class="javax.swing.JButton" name="jButtonImprimirReceta">
           <Properties>
@@ -298,10 +305,18 @@
           <Properties>
             <Property name="text" type="java.lang.String" value="Limpiar"/>
           </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jButtonLimpiarRecetaActionPerformed"/>
+          </Events>
         </Component>
         <Component class="javax.swing.JButton" name="jButtonRegresarAlMenu">
           <Properties>
             <Property name="text" type="java.lang.String" value="Regresar"/>
+          </Properties>
+        </Component>
+        <Component class="javax.swing.JLabel" name="jLabelStatusReceta">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="jLabel9"/>
           </Properties>
         </Component>
       </SubComponents>
