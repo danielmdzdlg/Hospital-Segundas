@@ -17,10 +17,10 @@ public class Conexion {
 
     private static final String HOST = "localhost";
     private static final String PUERTO = "5432";
-    private static final String BASE_DATOS = "Topicos";
+    private static final String BASE_DATOS = "hospital";
     private static final String ESQUEMA = "hospital";
     private static final String USUARIO = "postgres";
-    private static final String PASSWORD = "1234";
+    private static final String PASSWORD = "0987";
 
     private static final String URL =
             "jdbc:postgresql://" + HOST + ":" + PUERTO + "/" + BASE_DATOS;

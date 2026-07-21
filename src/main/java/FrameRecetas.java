@@ -13,7 +13,7 @@ import java.util.List;
 import java.io.File;
 import java.awt.Desktop;
 import com.itextpdf.kernel.pdf.PdfWriter;
-import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfDocument; 
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Paragraph;
@@ -23,29 +23,36 @@ import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 
 public class FrameRecetas extends javax.swing.JFrame {
-private int idConsultaActual;
-private List<Object[]> filasPendientes = new ArrayList<>(); // {idMedicamento, nombreMostrado, dosis, frecuencia, duracion}
+    private int idConsultaActual;
+    private List<Object[]> filasPendientes = new ArrayList<>();
 
     /**
-     * Creates new form FrameRecetas
+     * CONSTRUCTOR 1: Se llama desde el MENÚ PRINCIPAL (sin parámetros)
      */
     public FrameRecetas() {
         initComponents();
         cargarComboMedicamento();
+        cargarComboConsultas(); // Carga todas las consultas disponibles
+        jComboBoxConsultaReceta.setEnabled(true);
         inicializarTablaMedicamentos();
     }
-    public FrameRecetas(int idConsulta) {
-    initComponents();
-    this.idConsultaActual = idConsulta;
-    cargarComboMedicamento();
-    // Deja fijo el combo de consulta mostrando solo esta consulta (no dejes cambiarlo)
-    javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
-    modelo.addElement(new ComboItem(String.valueOf(idConsulta), "Consulta #" + idConsulta));
-    jComboBoxConsultaReceta.setModel(modelo);
-    jComboBoxConsultaReceta.setEnabled(false);
-    inicializarTablaMedicamentos();
-    }
 
+    /**
+     * CONSTRUCTOR 2: Se llama desde FRAME CONSULTA (pasa el id de la consulta)
+     */
+    public FrameRecetas(int idConsulta) {
+        initComponents();
+        this.idConsultaActual = idConsulta;
+        cargarComboMedicamento();
+        
+        // Bloquea el combo para mostrar solo la consulta seleccionada previamente
+        javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+        modelo.addElement(new ComboItem(String.valueOf(idConsulta), "Consulta #" + idConsulta));
+        jComboBoxConsultaReceta.setModel(modelo);
+        jComboBoxConsultaReceta.setEnabled(false);
+        
+        inicializarTablaMedicamentos();
+    }
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -483,6 +490,28 @@ private List<Object[]> filasPendientes = new ArrayList<>(); // {idMedicamento, n
                 new FrameRecetas().setVisible(true);
             }
         });
+    }
+    
+    // Método para llenar el combo con todas las consultas registradas
+    private void cargarComboConsultas() {
+        try {
+            javax.swing.DefaultComboBoxModel modelo = new javax.swing.DefaultComboBoxModel();
+            // Asumiendo que ConsultaDAO tiene listarTodas() o similar
+            for (Object[] fila : ConsultaDAO.listarTodos()) { 
+                String id = fila[0].toString();
+                String info = "Consulta #" + id + " - Paciente: " + fila[1] + " (" + fila[4] + ")";
+                modelo.addElement(new ComboItem(id, info));
+            }
+            jComboBoxConsultaReceta.setModel(modelo);
+            
+            // Asignar por defecto el primer elemento si existe
+            if (modelo.getSize() > 0) {
+                ComboItem primero = (ComboItem) modelo.getElementAt(0);
+                idConsultaActual = Integer.parseInt(primero.getId());
+            }
+        } catch (Exception e) {
+            jLabelStatusReceta.setText("Error al cargar consultas: " + e.getMessage());
+        }
     }
     
     
