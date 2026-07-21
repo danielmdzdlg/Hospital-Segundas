@@ -10,8 +10,20 @@
 import java.util.ArrayList;
 import java.util.List;
 
+import java.io.File;
+import java.awt.Desktop;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.colors.ColorConstants;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.element.Table;
+import com.itextpdf.layout.element.Cell;
+import com.itextpdf.layout.properties.TextAlignment;
+import com.itextpdf.layout.properties.UnitValue;
+
 public class FrameRecetas extends javax.swing.JFrame {
-    private int idConsultaActual;
+private int idConsultaActual;
 private List<Object[]> filasPendientes = new ArrayList<>(); // {idMedicamento, nombreMostrado, dosis, frecuencia, duracion}
 
     /**
@@ -292,6 +304,73 @@ private List<Object[]> filasPendientes = new ArrayList<>(); // {idMedicamento, n
 
     private void jButtonImprimirRecetaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonImprimirRecetaActionPerformed
         // TODO add your handling code here:
+       if (filasPendientes.isEmpty()) {
+            javax.swing.JOptionPane.showMessageDialog(this, 
+                "No hay medicamentos agregados para imprimir la receta.", 
+                "Atención", 
+                javax.swing.JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String nombreArchivo = "Receta_Consulta_" + idConsultaActual + ".pdf";
+
+        try {
+            // Inicializar PdfWriter y PdfDocument de iText 8
+            PdfWriter writer = new PdfWriter(nombreArchivo);
+            PdfDocument pdfDoc = new PdfDocument(writer);
+            Document document = new Document(pdfDoc);
+
+            // Título
+            Paragraph title = new Paragraph("RECETA MÉDICA")
+                    .setFontSize(18)
+                    .setBold()
+                    .setFontColor(ColorConstants.BLUE)
+                    .setTextAlignment(TextAlignment.CENTER);
+            document.add(title);
+            document.add(new Paragraph("\n"));
+
+            // Datos
+            document.add(new Paragraph("Consulta N°: " + idConsultaActual).setBold());
+            document.add(new Paragraph("Indicaciones Generales: " + jTextAreaIndicacionesGenerales.getText().trim()));
+            document.add(new Paragraph("\n"));
+
+            // Tabla (con ancho relativo al 100%)
+            Table table = new Table(UnitValue.createPercentArray(new float[]{4, 2, 2, 2}));
+            table.setWidth(UnitValue.createPercentValue(100));
+
+            // Encabezados
+            String[] headers = {"Medicamento", "Dosis", "Frecuencia", "Duración"};
+            for (String header : headers) {
+                Cell cell = new Cell()
+                        .add(new Paragraph(header).setBold())
+                        .setBackgroundColor(ColorConstants.LIGHT_GRAY)
+                        .setTextAlignment(TextAlignment.CENTER);
+                table.addHeaderCell(cell);
+            }
+
+            // Filas
+            for (Object[] fila : filasPendientes) {
+                table.addCell(new Cell().add(new Paragraph(fila[1].toString())));
+                table.addCell(new Cell().add(new Paragraph(fila[2].toString())));
+                table.addCell(new Cell().add(new Paragraph(fila[3].toString())));
+                table.addCell(new Cell().add(new Paragraph(fila[4].toString())));
+            }
+
+            document.add(table);
+            document.close();
+
+            // Abrir el archivo PDF
+            File pdfFile = new File(nombreArchivo);
+            if (pdfFile.exists() && Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(pdfFile);
+            }
+
+            jLabelStatusReceta.setText("PDF generado correctamente: " + nombreArchivo);
+
+        } catch (Exception e) {
+            jLabelStatusReceta.setText("Error al generar PDF: " + e.getMessage());
+            e.printStackTrace();
+        }
     }//GEN-LAST:event_jButtonImprimirRecetaActionPerformed
 
     private void jTextFieldDosisActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldDosisActionPerformed
